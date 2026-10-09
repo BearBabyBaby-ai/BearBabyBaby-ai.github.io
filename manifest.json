@@ -1,0 +1,18 @@
+{
+  "name": "熊熊綜合系統",
+  "short_name": "熊熊綜合系統",
+  "description": "澎湖美食・景點・活動・分海・潮汐・航班・月曆",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "lang": "zh-Hant-TW",
+  "theme_color": "#082f49",
+  "background_color": "#eef5f7",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
