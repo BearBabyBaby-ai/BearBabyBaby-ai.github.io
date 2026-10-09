@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "io.github.bearbabybaby_ai.twa",
+        "sha256_cert_fingerprints": ["B4:D3:2D:70:53:0A:C4:4E:D3:C8:89:96:2A:42:19:77:8C:0B:5E:55:CA:BC:51:56:EE:12:7A:73:BE:04:3A:3A"]
+      }
+    }]
