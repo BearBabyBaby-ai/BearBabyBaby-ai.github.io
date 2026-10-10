@@ -4605,12 +4605,14 @@ body{color:var(--navy);font-family:var(--f-game);line-height:1.55}
     showDistance(p, id);
     stampBtn();
     ci.hidden = false; ci.scrollTop = 0;
+    if(!st.hist){ try{ history.pushState({ checkin: 1 }, ""); st.hist = true; }catch(e){} }   /* App：手機返回鍵先關閉打卡畫面 */
     try{ document.body.style.overflow = "hidden"; }catch(e){}
     $("#btn-back").focus();
   }
   function closeCheckin(){
     const id = st.open;
     st.open = null; stopWatch();
+    if(st.hist){ st.hist = false; try{ history.back(); }catch(e){} }   /* App：用畫面上的返回按鈕關閉時，一併移除返回紀錄 */
     $(".checkin").hidden = true;
     try{ document.body.style.overflow = ""; }catch(e){}
     render();
@@ -4752,6 +4754,7 @@ body{color:var(--navy);font-family:var(--f-game);line-height:1.55}
   $(".tabs").addEventListener("click", e=>{ const b=e.target.closest("button[data-c]"); if(!b) return; if(st.cat!==b.dataset.c) shown = 0; st.cat=b.dataset.c; render(); });
   $(".cards").addEventListener("click", e=>{ if(e.target.closest("a.nav")) return; const b=e.target.closest("[data-id]"); if(b) openCheckin(b.dataset.id, b.dataset.c || st.cat); });
   $("#btn-back").addEventListener("click", closeCheckin);
+  window.addEventListener("popstate", ()=>{ if(st.hist && st.open){ st.hist = false; closeCheckin(); } else st.hist = false; });
   document.addEventListener("keydown", e=>{ if(e.key==="Escape" && st.open) closeCheckin(); });
   $(".stampbtn").addEventListener("click", ()=>{
     const p = place(); if(!p || st.done[p.id] || stampLock(p)) return;
@@ -6934,6 +6937,40 @@ const Home = (() => {
 })();
 </script>
 <script>
+/* App（PWA／APK）：手機返回鍵回到上一頁（上一個分頁、關閉圖片預覽），在第一頁再按返回才離開 App */
+(function () {
+  if (typeof showView !== 'function') return;
+  const baseShowView = showView;
+  let restoring = false, modalPushed = false, skipPop = false;
+  showView = function (view) {
+    const before = currentView;
+    try { baseShowView(view); } finally {
+      if (!restoring && before && currentView !== before) {
+        try {
+          history.replaceState({ view: before }, '', '#' + before);
+          history.pushState({ view: currentView }, '', '#' + currentView);
+        } catch (_) { /* 不支援時略過 */ }
+      }
+    }
+  };
+  const modal = document.getElementById('imageModal');
+  if (modal) {
+    new MutationObserver(() => {
+      const open = modal.classList.contains('show');
+      if (open && !modalPushed) { modalPushed = true; try { history.pushState({ modal: 1 }, '', location.hash); } catch (_) {} }
+      else if (!open && modalPushed) { modalPushed = false; skipPop = true; try { history.back(); } catch (_) { skipPop = false; } }
+    }).observe(modal, { attributes: true, attributeFilter: ['class'] });
+  }
+  window.addEventListener('popstate', () => {
+    if (skipPop) { skipPop = false; return; }
+    if (modalPushed) { modalPushed = false; closeImageModal(); return; }
+    const view = (location.hash || '').replace('#', '') || 'home';
+    if (view === currentView) return;
+    restoring = true;
+    try { showView(view); } finally { restoring = false; }
+  });
+})();
+
 /* App（PWA／APK）：註冊 service worker，讓 App 可離線開啟並自動取得新版 */
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
   window.addEventListener('load', () => {
