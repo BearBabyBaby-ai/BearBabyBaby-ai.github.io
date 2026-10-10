@@ -993,7 +993,7 @@
     </section>
     <!-- ================= 熊熊集章卡（熊熊島遊記，僅手機版顯示） ================= -->
     <section class="view" id="view-stamp" aria-label="熊熊集章卡" hidden>
-      <iframe id="stampFrame" title="熊熊島遊記・集章卡" hidden></iframe>
+      <iframe id="stampFrame" title="熊熊島遊記・集章卡" allow="geolocation" hidden></iframe>
     </section>
   </main>
 </div>
@@ -4227,11 +4227,13 @@ body{color:var(--navy);font-family:var(--f-game);line-height:1.55}
 .nm{font-size:19px;font-weight:700;line-height:1.3}
 .sub{font-size:13px;opacity:.8}
 .gps{font-size:12.5px;margin-top:4px;align-self:flex-start;background:var(--ok-bg);color:var(--ok);border-radius:999px;padding:1px 10px}
+.gps.far{background:#eef3f6;color:#4a5d68}
 
 .actions{display:flex;gap:10px;align-items:center;padding-inline:14px}
 .stampbtn{flex:1;min-height:50px;border:0;border-radius:999px;background:linear-gradient(180deg,#ff8a6a,#ff5e57);color:#fff!important;font-size:19px;letter-spacing:.12em;box-shadow:0 5px 0 var(--coral-d),0 10px 18px rgba(255,94,87,.3);transition:transform .1s,box-shadow .1s}
 .stampbtn:active{transform:translateY(4px);box-shadow:0 1px 0 var(--coral-d)}
 .stampbtn:disabled{background:#c9e9d6;color:var(--ok)!important;box-shadow:0 5px 0 #a4d4b8;cursor:default}
+.stampbtn.locked:disabled{background:#e3e9ee;color:#5d7584!important;box-shadow:0 5px 0 #c9d4dc;font-size:15px;letter-spacing:.04em}
 .reset{background:none;border:0;font-size:13px;text-decoration:underline;text-underline-offset:3px;opacity:.75;padding:8px 4px}
 .tools{display:flex;gap:10px;padding-inline:14px}
 .tool{flex:1;min-height:40px;border:2px solid var(--line);background:#fff;border-radius:999px;font-size:14.5px;display:inline-flex;align-items:center;justify-content:center;gap:4px}
@@ -4358,13 +4360,35 @@ body{color:var(--navy);font-family:var(--f-game);line-height:1.55}
         line: god ? `${name}供奉${god}。先拜拜，再來蓋章吧。` : `${name}到了，先拜拜，再來蓋章吧。` };
     }
   };
+  /* 地點所在區域：澎湖本島（馬公、湖西、白沙、西嶼以橋相連的範圍）或各離島。
+     先看鄉市／村里／地址，沒有村里的外島再用座標判斷 */
+  const MAIN = "澎湖本島";
+  const AREA_VILLAGES = [["吉貝","吉貝"],["鳥嶼","鳥嶼"],["員貝","員貝"],["大倉","大倉"],["虎井","虎井"],["桶盤","桶盤"],
+    ["將軍","將軍澳嶼"],["花嶼","花嶼"],["東吉","東吉嶼"],["西吉","西吉嶼"],["東坪","東嶼坪"],["西坪","西嶼坪"]];
+  function areaOf(o, p){
+    const town = o["區域(鄉市)"] || "", text = (o["區域(村里)"] || "") + (o["地址"] || "");
+    const hit = AREA_VILLAGES.find(([k])=>text.includes(k));
+    if(hit) return hit[1];
+    if(town.includes("七美")) return "七美";
+    if(town.includes("望安")) return "望安";
+    const lat = p.lat, lng = p.lng;
+    if(Number.isFinite(lat) && (lat > 23.69 || lat < 23.45 || (lat < 23.505 && lng < 119.56)
+      || (lat >= 23.635 && lat <= 23.675 && lng >= 119.625 && lng <= 119.68))) return p.name;   /* 其他外島（例如姑婆嶼） */
+    return MAIN;
+  }
+  const areaName = a => a === MAIN ? MAIN : a + "（離島）";
   function buildPlaces(catKey, table){
     const seen = {};
-    return toObjects(table).map(BUILD[catKey]).filter(Boolean).map(p=>{
+    return toObjects(table).map(o=>{
+      const p = BUILD[catKey](o); if(!p) return null;
+      const lat = parseFloat(String(o.Latitude||"").replace(/,/g,"")), lng = parseFloat(String(o.Longitude||"").replace(/,/g,""));
+      if(Number.isFinite(lat) && Number.isFinite(lng)){ p.lat = lat; p.lng = lng; }
+      p.area = areaOf(o, p);
+      return p;
+    }).filter(Boolean).map(p=>{
       let id = catKey + ":" + p.name + "|" + p.key;
       seen[id] = (seen[id]||0) + 1; if(seen[id] > 1) id += "#" + seen[id];
-      const h = hash(id);
-      return Object.assign(p, { id, bar: BARS[hash(p.tag||p.name) % BARS.length], dist: 5 + h % 40 });
+      return Object.assign(p, { id, bar: BARS[hash(p.tag||p.name) % BARS.length] });
     });
   }
   const PLACES = {};
@@ -4498,9 +4522,18 @@ body{color:var(--navy);font-family:var(--f-game);line-height:1.55}
   const $ = s => root.querySelector(s);
   const cat = () => CATS.find(c=>c.key===st.cat);
   const list = () => PLACES[st.cat];
+  /* 卡片順序：有定位時由近到遠（沒有座標的排最後），沒開定位維持試算表原本順序 */
+  let order = [];
+  function sortedList(){
+    const arr = list();
+    if(!lastPos) return arr;
+    return arr.map((p,i)=>[p, Number.isFinite(p.lat) ? meters(lastPos, p) : Infinity, i])
+      .sort((a,b)=>a[1]-b[1] || a[2]-b[2]).map(x=>x[0]);
+  }
   const place = () => PLACES[st.openCat].find(p=>p.id===st.open) || st.openPlace;
   const doneIn = k => PLACES[k].filter(p=>st.done[p.id]).length;
-  const total = () => CATS.reduce((n,c)=>n+PLACES[c.key].length,0);
+  const countable = k => PLACES[k].length;
+  const total = () => CATS.reduce((n,c)=>n+countable(c.key),0);
   const addr = p => { const r = p.info.find(i=>i[0]==="地址"||i[0]==="地點"); return r ? r[1] : ""; };
 
   function cardHTML(p){
@@ -4528,7 +4561,7 @@ body{color:var(--navy);font-family:var(--f-game);line-height:1.55}
   let shown = 0, io = null;
   function stopMore(){ if(io){ io.disconnect(); io = null; } }
   function moreCards(){
-    const box = $(".cards"), items = list(), next = items.slice(shown, shown + BATCH);
+    const box = $(".cards"), items = order, next = items.slice(shown, shown + BATCH);
     const old = box.querySelector(".more"); if(old) old.remove();
     box.insertAdjacentHTML("beforeend", next.map(cardHTML).join(""));
     shown += next.length;
@@ -4543,8 +4576,8 @@ body{color:var(--navy);font-family:var(--f-game);line-height:1.55}
   }
   function renderCards(){
     const keepTo = Math.max(shown, BATCH);
-    stopMore(); shown = 0; $(".cards").innerHTML = "";
-    while(shown < Math.min(keepTo, list().length)) moreCards();
+    stopMore(); shown = 0; $(".cards").innerHTML = ""; order = sortedList();
+    while(shown < Math.min(keepTo, order.length)) moreCards();
     if(!list().length) $(".cards").innerHTML = `<p class="book-empty">這個分類目前沒有資料。</p>`;
   }
   function render(){
@@ -4553,7 +4586,7 @@ body{color:var(--navy);font-family:var(--f-game);line-height:1.55}
     root.querySelectorAll(".tabs button").forEach(b=>{
       const k = b.dataset.c;
       b.setAttribute("aria-selected", k===st.cat ? "true" : "false");
-      b.querySelector("small").textContent = k==="book" ? Object.keys(st.done).length + "/" + total() : doneIn(k) + "/" + PLACES[k].length;
+      b.querySelector("small").textContent = k==="book" ? Object.keys(st.done).length + "/" + total() : doneIn(k) + "/" + countable(k);
     });
     $(".prog").textContent = "集章 " + Object.keys(st.done).length + " / " + total();
     if(isBook){ stopMore(); $(".cards").innerHTML = bookHTML(); }
@@ -4569,7 +4602,7 @@ body{color:var(--navy);font-family:var(--f-game);line-height:1.55}
     $(".line").textContent = p.line;
     $(".nm").textContent = p.name;
     $(".sub").textContent = [addr(p), p.sub].filter(Boolean).join("．");
-    $(".gps").textContent = "示範｜距離 " + p.dist + " 公尺，可以蓋章";
+    showDistance(p, id);
     stampBtn();
     ci.hidden = false; ci.scrollTop = 0;
     try{ document.body.style.overflow = "hidden"; }catch(e){}
@@ -4577,7 +4610,7 @@ body{color:var(--navy);font-family:var(--f-game);line-height:1.55}
   }
   function closeCheckin(){
     const id = st.open;
-    st.open = null;
+    st.open = null; stopWatch();
     $(".checkin").hidden = true;
     try{ document.body.style.overflow = ""; }catch(e){}
     render();
@@ -4595,6 +4628,51 @@ body{color:var(--navy);font-family:var(--f-game);line-height:1.55}
       $(".art img").addEventListener("error", next, { once:true });
     };
     next();
+  }
+  /* ---------- 距離：用手機定位計算到試算表座標（Latitude／Longitude）的實際距離 ---------- */
+  const NEAR_M = 50;   /* 這個距離內才能蓋章 */
+  let lastPos = null, watchId = null;
+  function stopWatch(){ if(watchId !== null && navigator.geolocation){ navigator.geolocation.clearWatch(watchId); } watchId = null; }
+  const meters = (a, b) => {
+    const R = 6371000, rad = x => x*Math.PI/180;
+    const dLat = rad(b.lat-a.lat), dLng = rad(b.lng-a.lng);
+    const s = Math.sin(dLat/2)**2 + Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*Math.sin(dLng/2)**2;
+    return 2*R*Math.asin(Math.sqrt(s));
+  };
+  function userArea(pos){
+    let best = null, bd = Infinity;
+    CATS.forEach(c=>PLACES[c.key].forEach(q=>{ if(Number.isFinite(q.lat)){ const d = meters(pos, q); if(d < bd){ bd = d; best = q; } } }));
+    return best ? best.area : "";
+  }
+  function gpsText(text, near){ const g = $(".gps"); g.textContent = text; g.classList.toggle("far", !near); }
+  function showDistance(p, id){
+    stopWatch(); st.dist = null; st.gpsErr = ""; st.here = "";
+    if(!Number.isFinite(p.lat)){ gpsText("📍 試算表沒有座標，無法計算距離", false); return; }
+    const put = pos => {
+      if(st.open !== id) return;
+      const m = meters(pos, p); st.dist = m; st.here = userArea(pos);
+      const far = `距離 ${m < 1000 ? Math.round(m) + " 公尺" : (m/1000).toFixed(m < 10000 ? 1 : 0) + " 公里"}`;
+      if(st.here && st.here !== p.area) gpsText(`📍 你在${areaName(st.here)}，只能蓋${st.here}的章（${far}）`, false);
+      else if(m <= NEAR_M) gpsText(`📍 距離 ${Math.round(m)} 公尺，可以蓋章`, true);
+      else gpsText(`📍 ${far}（需在 ${NEAR_M} 公尺內）`, false);
+      stampBtn();
+    };
+    if(lastPos) put(lastPos); else gpsText("📍 定位中…", false);
+    if(!("geolocation" in navigator)){ st.gpsErr = "nogps"; gpsText("📍 此裝置不支援定位，無法蓋章", false); stampBtn(); return; }
+    /* 打卡畫面開著時持續更新位置，走近 50 公尺內就能蓋章 */
+    watchId = navigator.geolocation.watchPosition(
+      pos => { lastPos = { lat: pos.coords.latitude, lng: pos.coords.longitude }; put(lastPos); },
+      () => { if(st.open === id && st.dist === null){ st.gpsErr = "denied"; gpsText("📍 無法取得目前位置（請允許定位權限）", false); stampBtn(); } },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+    );
+  }
+  /* 可以蓋章：有座標、目前所在區域與地點相同（本島蓋本島、離島只蓋該離島），且在 50 公尺內 */
+  function stampLock(p){
+    if(!Number.isFinite(p.lat)) return "沒有座標，無法蓋章";
+    if(st.dist === null) return st.gpsErr ? "需要定位才能蓋章" : "定位中…";
+    if(st.here && st.here !== p.area) return `只能蓋${st.here}的章`;
+    if(st.dist > NEAR_M) return `${NEAR_M} 公尺內才能蓋章`;
+    return "";
   }
   function tip(msg){ const t = $(".tip"); t.textContent = msg; t.hidden = !msg; }
 
@@ -4665,8 +4743,10 @@ body{color:var(--navy);font-family:var(--f-game);line-height:1.55}
     tip("已更換圖片");
   }
   function stampBtn(){
-    const has = !!st.done[st.open], btn = $(".stampbtn");
-    btn.textContent = has ? "已蓋章 ✓" : "蓋章！"; btn.disabled = has;
+    const has = !!st.done[st.open], btn = $(".stampbtn"), p = st.open ? place() : null;
+    const lock = (!has && p) ? stampLock(p) : "";
+    btn.textContent = has ? "已蓋章 ✓" : (lock || "蓋章！"); btn.disabled = has || !!lock;
+    btn.classList.toggle("locked", !!lock);
   }
 
   $(".tabs").addEventListener("click", e=>{ const b=e.target.closest("button[data-c]"); if(!b) return; if(st.cat!==b.dataset.c) shown = 0; st.cat=b.dataset.c; render(); });
@@ -4674,7 +4754,7 @@ body{color:var(--navy);font-family:var(--f-game);line-height:1.55}
   $("#btn-back").addEventListener("click", closeCheckin);
   document.addEventListener("keydown", e=>{ if(e.key==="Escape" && st.open) closeCheckin(); });
   $(".stampbtn").addEventListener("click", ()=>{
-    const p = place(); if(!p || st.done[p.id]) return;
+    const p = place(); if(!p || st.done[p.id] || stampLock(p)) return;
     st.done[p.id] = TODAY;
     const layer = $(".stamp-layer");
     layer.innerHTML = stampHTML(st.openCat,p);
@@ -4692,6 +4772,14 @@ body{color:var(--navy);font-family:var(--f-game);line-height:1.55}
   $(".reset").addEventListener("click", ()=>{ st.done = {}; $(".stamp-layer").innerHTML = ""; stampBtn(); render(); });
   render();
   loadLive().then(()=>render());
+  /* 開啟集章卡時取得一次位置，用來把清單排成由近到遠 */
+  if("geolocation" in navigator){
+    navigator.geolocation.getCurrentPosition(pos=>{
+      const first = !lastPos;
+      lastPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      if(first && !st.open && st.cat !== "book") render();
+    }, ()=>{}, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
+  }
 })();
 </script>
 </template>
