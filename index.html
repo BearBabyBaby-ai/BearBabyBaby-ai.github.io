@@ -329,6 +329,7 @@
     .tide-card:not([open]) summary{padding-top:12px;padding-bottom:12px}
     /* 奎壁山分海分頁配色（紅／藍潮汐與分合海顏色維持不變） */
     #view-tide{background:linear-gradient(180deg,#f3f8fa 0,#eaf3f6 100%)}
+    @media(min-width:821px){#view-tide .tide-days{grid-template-columns:repeat(3,minmax(0,1fr));align-items:start}}
     #view-tide .page-head h2{color:#0b3954}
     #view-tide .page-head p{color:#5b7480}
     #view-tide .tide-toolbar{border:1px solid #d3e3e8;border-left:5px solid #0b3954;border-radius:14px;color:#0b3954;box-shadow:0 4px 14px rgba(11,57,84,.07)}
@@ -2162,6 +2163,27 @@ function findQuickKeyword(kw) {
   const text = normalizeSearchText(kw).replace(/\s/g, '');
   return QUICK_KEYWORDS.find(q => [q.name, ...(q.aliases || [])].some(n => normalizeSearchText(n).replace(/\s/g, '') === text)) || null;
 }
+/* 關鍵字以空格分開，其中若有快速關鍵字（例如「馬公市區 午餐」）：先套用快速關鍵字，再以其餘關鍵字篩選 */
+function splitPresetKeyword(kw) {
+  const presets = [], rest = [];
+  String(kw || '').trim().split(/\s+/).filter(Boolean).forEach(token => {
+    const preset = findQuickKeyword(token);
+    if (preset) { if (!presets.includes(preset)) presets.push(preset); } else rest.push(token);
+  });
+  return { presets, rest: rest.join(' ') };
+}
+function runPresetKeyword(split, datasets) {
+  let buckets = datasets;
+  split.presets.forEach((preset, index) => {
+    const next = runQuickKeyword(preset, index === 0 ? datasets : buckets);
+    buckets = index === 0 ? next : Object.fromEntries(ALL_SHEETS.map(sheet => [sheet, (next[sheet] || []).filter(item => (buckets[sheet] || []).includes(item))]));
+  });
+  if (!split.rest) return buckets;
+  const context = createSearchContext(datasets);
+  const plan = buildSearchPlan(split.rest, context);
+  return Object.fromEntries(ALL_SHEETS.map(sheet => [sheet,
+    (buckets[sheet] || []).filter(item => matchesSearchPlan(item, sheet, plan, context))]));
+}
 function villageFromAddress(address) {
   const m = String(address || '').match(/(?:馬公市|湖西鄉|白沙鄉|西嶼鄉|望安鄉|七美鄉)([㐀-鿿]{1,3}?)[里村]/);
   return m ? m[1] : '';
@@ -3553,6 +3575,13 @@ async function executeGlobalSearch(presetName = '') {
       setupSearchTabsAndDisplay();
       return;
     }
+    const presetSplit = splitPresetKeyword(kw);
+    if (presetSplit.presets.length) {
+      setActiveQuickChip(presetSplit.presets[0].name);
+      searchCategorizedData = runPresetKeyword(presetSplit, datasets);
+      setupSearchTabsAndDisplay();
+      return;
+    }
     const context = createSearchContext(datasets);
     const plan = buildSearchPlan(kw, context);
     searchCategorizedData = Object.fromEntries(ALL_SHEETS.map(sheetName => [sheetName,
@@ -3662,15 +3691,20 @@ function displayResults() {
     return;
   }
 
-  let keywordContext = null, keywordPlan = null;
+  let keywordContext = null, keywordPlan = null, keywordAllowed = null;
   if (kw) {
     const keywordDatasets = {};
     for (const sheetName of ALL_SHEETS) {
       const items = sheetName === sourceSheet ? allData : (allSheetsDataCache[sheetName] || []);
       keywordDatasets[sheetName] = sheetName === '美食清單' ? items.filter(isVisibleFoodItem) : items;
     }
-    keywordContext = createSearchContext(keywordDatasets);
-    keywordPlan = buildSearchPlan(kw, keywordContext);
+    const presetSplit = splitPresetKeyword(kw);
+    if (presetSplit.presets.length) {
+      keywordAllowed = new Set(runPresetKeyword(presetSplit, keywordDatasets)[sourceSheet] || []);
+    } else {
+      keywordContext = createSearchContext(keywordDatasets);
+      keywordPlan = buildSearchPlan(kw, keywordContext);
+    }
   }
 
   filteredData = allData.filter(item => {
@@ -3689,6 +3723,7 @@ function displayResults() {
       match2 = mainCat ? item._dd2 === mainCat : true;
     }
     if (!(match2 && match3)) return false;
+    if (keywordAllowed) return keywordAllowed.has(item);
     return kw ? matchesSearchPlan(item, sourceSheet, keywordPlan, keywordContext) : true;
   });
 
@@ -5343,6 +5378,7 @@ async function loadData() {
   allData = sets.flat();
   dataByKey = new Map(allData.map(d => [keyOf(d), d]));
   applyFilter();
+  setRegionFromLocation();
   if (failed.length) resultCount.textContent += `｜未載入：${failed.join('、')}`;
   Home.renderPlaces();
   Events.refresh();
@@ -5372,6 +5408,27 @@ function openImageModal(src) { if (!src) return; $('imageModalImg').src = src; $
 function closeImageModal() { $('imageModal').classList.remove('show'); $('imageModalImg').src = ''; }
 $('imageModal').addEventListener('click', e => { if (e.target.id !== 'imageModalImg') closeImageModal(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeImageModal(); });
+
+/* 手機版：有開定位時，景點、美食、廟宇、其他店家的預設區域改成手機所在的鄉市（使用者已自選區域時不變） */
+let regionPicked = false;
+regionSelect.addEventListener('change', () => { regionPicked = true; });
+function setRegionFromLocation() {
+  if (!isMobile() || regionPicked || activeRegion || !('geolocation' in navigator)) return;
+  navigator.geolocation.getCurrentPosition(pos => {
+    if (!isMobile() || regionPicked || activeRegion) return;
+    const lat = pos.coords.latitude, lng = pos.coords.longitude, rad = x => x * Math.PI / 180;
+    let best = null, bestKm = 10;   /* 10 公里內有資料點才算在澎湖 */
+    for (const d of allData) {
+      if (!Number.isFinite(d.lat) || !Number.isFinite(d.lng) || !d.region) continue;
+      const a = Math.sin(rad(d.lat - lat) / 2) ** 2 + Math.cos(rad(lat)) * Math.cos(rad(d.lat)) * Math.sin(rad(d.lng - lng) / 2) ** 2;
+      const km = 12742 * Math.asin(Math.sqrt(a));
+      if (km < bestKm) { bestKm = km; best = d; }
+    }
+    if (!best || ![...regionSelect.options].some(o => o.value === best.region)) return;
+    regionSelect.value = best.region;
+    selectRegion(best.region);
+  }, () => {}, { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 });
+}
 
 function applyMapSettings() {
   sheetConfigs.forEach(s => { typeGlyph[s.type] = s.glyph; typeColor[s.type] = s.color; });
