@@ -4200,8 +4200,9 @@ body{color:var(--navy);font-family:var(--f-game);line-height:1.55}
 .screen button{font:inherit;cursor:pointer;color:inherit}
 .screen button:focus-visible{outline:3px solid #ffcf3f;outline-offset:2px}
 
-.topbar{display:flex;justify-content:space-between;align-items:center;padding-inline:14px;gap:10px}
-.gtitle{display:flex;align-items:center;gap:8px;font-size:20px;font-weight:700;letter-spacing:.04em}
+.topbar{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;padding-inline:14px;gap:8px 10px}
+.gtitle{display:flex;align-items:center;gap:8px;font-size:20px;font-weight:700;letter-spacing:.04em;white-space:nowrap;flex:0 0 auto}
+.top-r{display:flex;align-items:center;gap:6px;margin-left:auto;flex-wrap:wrap;justify-content:flex-end}
 .gtitle img{width:34px;height:34px;border-radius:50%;border:2px solid #fff;box-shadow:0 2px 6px rgba(29,53,87,.2)}
 .gtitle span{background:linear-gradient(90deg,#1f87c9,#ff6b5e);-webkit-background-clip:text;background-clip:text;color:transparent}
 .prog{font-size:12.5px;background:#fff;border:2px solid var(--line);border-radius:999px;padding:1px 10px;white-space:nowrap;font-variant-numeric:tabular-nums}
@@ -4614,7 +4615,7 @@ body{color:var(--navy);font-family:var(--f-game);line-height:1.55}
   const BOOK = { key:"book", name:"集章冊", color:"var(--coral)" };   /* 4th tab: every stamp from 景點、美食、廟宇 */
   const st = { cat:"spot", open:null, openCat:null, done:loadDone(), pics:{}, screen:"menu" };   /* pics[id] = 使用者更換的圖片 */   /* open/openCat = place shown in the check-in view; done[id] = date */
   root.innerHTML = `
-    <div class="topbar"><span class="gtitle"><img src="${PORTRAIT}" alt="熊熊"><span>熊熊島遊記</span></span><span class="prog"></span><button type="button" class="menubtn" id="btn-menu" hidden>☰ 選單</button></div>
+    <div class="topbar"><span class="gtitle"><img src="${PORTRAIT}" alt="熊熊"><span>熊熊島遊記</span></span><span class="top-r"><span class="prog"></span><button type="button" class="menubtn" id="btn-menu" hidden>☰ 選單</button></span></div>
     <section class="menu" aria-label="集章選單">
       <div class="menu-sum">已蓋 <b class="menu-count">0</b> 個章<small class="menu-first"></small><small class="menu-dev"></small></div>
       <button type="button" class="mbtn main" data-act="list"><span class="ico">🗺️</span><span><b>開啟景點</b><small>景點、美食、廟宇打卡蓋章與集章冊</small></span></button>
@@ -4754,7 +4755,8 @@ body{color:var(--navy);font-family:var(--f-game);line-height:1.55}
     next();
   }
   /* ---------- 距離：用手機定位計算到試算表座標（Latitude／Longitude）的實際距離 ---------- */
-  const NEAR_M = 50;   /* 這個距離內才能蓋章 */
+  /* 這個距離內才能蓋章：讀取試算表「系統設定」的「集章偵測範圍」（公尺），讀不到時用 50 */
+  const nearM = () => { try{ const n = Number(window.parent && typeof window.parent.stampRange === "function" ? window.parent.stampRange() : 0); return n > 0 ? n : 50; }catch(e){ return 50; } };
   let lastPos = null, watchId = null;
   function stopWatch(){ if(watchId !== null && navigator.geolocation){ navigator.geolocation.clearWatch(watchId); } watchId = null; }
   const meters = (a, b) => {
@@ -4777,8 +4779,8 @@ body{color:var(--navy);font-family:var(--f-game);line-height:1.55}
       const m = meters(pos, p); st.dist = m; st.here = userArea(pos);
       const far = `距離 ${m < 1000 ? Math.round(m) + " 公尺" : (m/1000).toFixed(m < 10000 ? 1 : 0) + " 公里"}`;
       if(st.here && st.here !== p.area) gpsText(`📍 你在${areaName(st.here)}，只能蓋${st.here}的章（${far}）`, false);
-      else if(m <= NEAR_M) gpsText(`📍 距離 ${Math.round(m)} 公尺，可以蓋章`, true);
-      else gpsText(`📍 ${far}（需在 ${NEAR_M} 公尺內）`, false);
+      else if(m <= nearM()) gpsText(`📍 距離 ${Math.round(m)} 公尺，可以蓋章`, true);
+      else gpsText(`📍 ${far}（需在 ${nearM()} 公尺內）`, false);
       stampBtn();
     };
     if(lastPos) put(lastPos); else gpsText("📍 定位中…", false);
@@ -4795,7 +4797,7 @@ body{color:var(--navy);font-family:var(--f-game);line-height:1.55}
     if(!Number.isFinite(p.lat)) return "沒有座標，無法蓋章";
     if(st.dist === null) return st.gpsErr ? "需要定位才能蓋章" : "定位中…";
     if(st.here && st.here !== p.area) return `只能蓋${st.here}的章`;
-    if(st.dist > NEAR_M) return `${NEAR_M} 公尺內才能蓋章`;
+    if(st.dist > nearM()) return `${nearM()} 公尺內才能蓋章`;
     return "";
   }
   function tip(msg){ const t = $(".tip"); t.textContent = msg; t.hidden = !msg; }
@@ -5102,7 +5104,7 @@ const CFG = {
   defaultView: 'home'
 };
 const OLD_LOGO_URL = 'https://lh3.googleusercontent.com/d/1rYf3EqwjJBh7pfyYFniBu5AjcKk8drS5';
-const HUB_KEYS = { '系統名稱': 'title', '副標題': 'sub', 'LOGO檔案ID': 'logoId', '潮汐預報預設區域': 'forecastDefault', '航班自動更新秒數': 'flightRefreshSec', '月曆隱藏類別': 'calendarHidden', '首頁近期天數': 'homeDays', '活動提前顯示天數': 'activityLeadDays', '預設開啟分頁': 'defaultView', '集章雲端網址': 'stampCloudUrl' };
+const HUB_KEYS = { '系統名稱': 'title', '副標題': 'sub', 'LOGO檔案ID': 'logoId', '潮汐預報預設區域': 'forecastDefault', '航班自動更新秒數': 'flightRefreshSec', '月曆隱藏類別': 'calendarHidden', '首頁近期天數': 'homeDays', '活動提前顯示天數': 'activityLeadDays', '預設開啟分頁': 'defaultView', '集章雲端網址': 'stampCloudUrl', '集章偵測範圍': 'stampRangeM' };
 const VIEW_NAMES = { '首頁': 'home', '地圖': 'map', '活動': 'events', '分海': 'tide', '潮汐': 'forecast', '航班': 'flight', '月曆': 'calendar', '元宵': 'events', '生圖': 'gen', '集章': 'stamp', '集章卡': 'stamp' };
 const DEFAULT_LINKS = [
   { name: '澎湖國家風景區管理處', url: 'https://www.penghu-nsa.gov.tw/', note: '活動與旅遊資訊' },
@@ -5204,6 +5206,8 @@ function loadGenerator() {
 }
 /* 集章卡的雲端儲存／載入網址（系統設定「集章雲端網址」），由集章卡頁面讀取 */
 function stampCloudUrl() { return CFG.stampCloudUrl || ''; }
+/* 集章卡的蓋章距離（公尺，系統設定「集章偵測範圍」，預設 50） */
+function stampRange() { const n = Number(String(CFG.stampRangeM || '').replace(/[^\d.]/g, '')); return n > 0 ? n : 50; }
 /* 熊熊集章卡：第一次開啟時才把原始頁面載入 iframe */
 function loadStamp() {
   const frame = $('stampFrame');
