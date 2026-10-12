@@ -214,6 +214,7 @@
       .h-days{max-height:none}
     }
     @media(max-width:380px){.h-flight-cols{grid-template-columns:1fr}}
+    @media(max-width:820px){.h-fl{grid-template-columns:auto minmax(0,1fr) auto}.h-fl em{grid-column:auto;justify-self:end;white-space:nowrap}}
 
     /* =====================================================================
        地圖（原 熊熊的互動地圖）
@@ -699,15 +700,22 @@
 
     /* 手機：底部各分頁有自己的顏色，選到時底色換成該分頁顏色 */
     @media(max-width:820px){
-      .app-nav .nav-btn[data-go="home"]{--nc:#0369a1}
-      .app-nav .nav-btn[data-go="calendar"]{--nc:#7c3aed}
-      .app-nav .nav-btn[data-go="events"]{--nc:#ea580c}
-      .app-nav .nav-btn[data-go="tide"]{--nc:#0f8d96}
-      .app-nav .nav-btn[data-go="forecast"]{--nc:#2563eb}
-      .app-nav .nav-btn[data-go="map"]{--nc:#16a34a}
-      .app-nav .nav-btn[data-go="flight"]{--nc:#4338ca}
-      .app-nav .nav-btn[data-go="stamp"]{--nc:#e8554a}
-      .app-nav .nav-btn.active{background:color-mix(in srgb,var(--nc,#075985) 15%,#fff);color:var(--nc,#075985);box-shadow:inset 0 -3px 0 var(--nc,#075985)}
+      .app-nav .nav-btn[data-go="home"]{--nc:#0369a1;--nb:#dceaf5}
+      .app-nav .nav-btn[data-go="calendar"]{--nc:#7c3aed;--nb:#ece3fd}
+      .app-nav .nav-btn[data-go="events"]{--nc:#ea580c;--nb:#fde4d3}
+      .app-nav .nav-btn[data-go="tide"]{--nc:#0f8d96;--nb:#d8eff1}
+      .app-nav .nav-btn[data-go="forecast"]{--nc:#2563eb;--nb:#dfe8fd}
+      .app-nav .nav-btn[data-go="map"]{--nc:#16a34a;--nb:#d9f2e1}
+      .app-nav .nav-btn[data-go="flight"]{--nc:#4338ca;--nb:#e2e1f8}
+      .app-nav .nav-btn[data-go="stamp"]{--nc:#e8554a;--nb:#fcdedb}
+      .app-nav .nav-btn.active{background:var(--nb,#e3f3f6);color:var(--nc,#075985);box-shadow:inset 0 -3px 0 var(--nc,#075985)}
+      #view-home{background:#e3eff8}
+      #view-calendar{background:#efe8fd}
+      #view-events{background:#fdebdd}
+      #view-tide{background:#ddf1f3}
+      #view-forecast{background:#e5edfd}
+      #view-map,#view-map .panel,#view-map .controls{background:#e1f4e7}
+      #view-flight{background:#e8e7fa}
     }
 
     /* 批次景點生圖指令 */
@@ -4232,9 +4240,9 @@ body{color:var(--navy);font-family:var(--f-game);line-height:1.55}
 .tabs button small{font-size:11px;opacity:.7;font-variant-numeric:tabular-nums}
 .tabs button[aria-selected="true"]{background:var(--c);border-color:#fff;color:#fff;box-shadow:0 4px 10px rgba(29,53,87,.22)}
 /* 底色跟著所選分類換色：景點藍、美食橘、廟宇紅、集章冊珊瑚 */
-html,body{background:linear-gradient(180deg,color-mix(in srgb,var(--c,#1f87c9) 20%,#fff) 0%,color-mix(in srgb,var(--c,#1f87c9) 7%,#fff) 45%,#fff3e2 100%) fixed;transition:background .3s}
-.screen{background:linear-gradient(180deg,color-mix(in srgb,var(--c) 14%,#fff) 0%,var(--sand) 100%)}
-.checkin{background:linear-gradient(180deg,color-mix(in srgb,var(--c) 14%,#fff) 0%,var(--sand) 100%)}
+html,body{background:linear-gradient(180deg,var(--t1,#d7efff) 0%,var(--t2,#f4fbff) 45%,#fff3e2 100%) fixed}
+.screen{background:linear-gradient(180deg,var(--t1,#e7f6ff) 0%,var(--sand) 100%)}
+.checkin{background:linear-gradient(180deg,var(--t1,#e7f6ff) 0%,var(--sand) 100%)}
 /* 列表照片（有圖資來源才顯示） */
 .thumb{display:block;width:100%;aspect-ratio:16/9;border-radius:10px;overflow:hidden;background:#e8f1f5}
 .thumb img{display:block;width:100%;height:100%;object-fit:cover}
@@ -4261,9 +4269,9 @@ html,body{background:linear-gradient(180deg,color-mix(in srgb,var(--c,#1f87c9) 2
 .card{cursor:pointer;box-sizing:border-box}
 .more{height:1px}
 .card-ft{display:flex;justify-content:flex-end;align-items:center;gap:10px}
-.card-ft{flex-wrap:wrap;justify-content:flex-start}
-.card-ft .nav{margin-left:auto;flex:0 0 auto;width:132px;min-width:0;padding:0 12px;box-sizing:border-box}
-.card-ft .dist{margin-right:auto;display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:700;color:#17594a;background:#e3f6ec;border:1px solid #bfe5cf;border-radius:999px;padding:4px 11px;white-space:nowrap}
+.card-ft{flex-wrap:nowrap;justify-content:flex-start}
+.card-ft .nav{margin-left:auto;flex:1 1 0;width:auto;max-width:50%;min-width:0;padding:0 10px;box-sizing:border-box}
+.card-ft .dist{flex:1 1 0;min-width:0;justify-content:center;overflow:hidden;text-overflow:ellipsis;box-sizing:border-box;min-height:36px;display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:700;color:#17594a;background:#e3f6ec;border:1px solid #bfe5cf;border-radius:999px;padding:4px 11px;white-space:nowrap}
 .card-ft .dist.far{color:#4a5d68;background:#eef3f6;border-color:#d7e2e8}
 .nav{display:inline-flex;align-items:center;justify-content:center;gap:4px;min-height:36px;min-width:118px;padding:0 22px;border-radius:999px;border:1.5px solid #17708a;color:#17708a;background:#eef8fb;font-size:13px;font-weight:700;text-decoration:none}
 .nav:active{background:#d7eff5}
@@ -4315,7 +4323,9 @@ html,body{background:linear-gradient(180deg,color-mix(in srgb,var(--c,#1f87c9) 2
 .tool:disabled{opacity:.6;cursor:default}
 .tip{margin:0 16px;font-size:12.5px;color:#4a5d68;text-align:center}
 .tip[hidden]{display:none}
-.tabs[hidden],.cards[hidden],.menu[hidden],.menubtn[hidden],.cloudform[hidden]{display:none}
+.tabs[hidden],.cards[hidden],.menu[hidden],.menubtn[hidden],.cloudform[hidden],.subsel[hidden]{display:none}
+.subsel{padding-inline:12px}
+.subsel select{width:100%;font:inherit;font-size:15px;color:var(--navy);background:#fff;border:2px solid var(--line);border-radius:999px;padding:7px 14px;appearance:auto}
 .menubtn{border:2px solid var(--line);background:#fff;border-radius:999px;padding:1px 10px;font-size:12.5px;white-space:nowrap}
 .menu{display:flex;flex-direction:column;gap:10px;padding-inline:14px}
 .menu-sum{background:#fff;border:2px solid var(--line);border-radius:16px;padding:12px 14px;font-size:13px;line-height:1.7;color:#33474f}
@@ -4476,6 +4486,58 @@ html,body{background:linear-gradient(180deg,color-mix(in srgb,var(--c,#1f87c9) 2
     return MAIN;
   }
   const areaName = a => a === MAIN ? MAIN : a + "（離島）";
+  /* ---------- 下拉篩選：美食依餐別／類型，廟宇依主祀（同一位神明的別稱合併） ---------- */
+  const FOOD_OPTS = ["早餐","午餐","晚餐","宵夜","素食","飲品","下午茶","海鮮"];
+  function foodMatch(p, opt){
+    const parts = String(p.kinds || "").split(/[／/、,，;；\s]+/).map(v=>v.trim()).filter(Boolean);
+    if(["早餐","午餐","晚餐"].includes(opt)) return parts.some(x => x === opt || (/^[早午晚]+餐$/.test(x) && x.includes(opt[0])));
+    if(opt === "宵夜") return parts.some(x => /宵夜|消夜/.test(x));
+    if(opt === "素食") return parts.some(x => /素/.test(x));
+    if(opt === "飲品") return parts.some(x => /飲品|飲料|手搖|茶飲/.test(x));
+    if(opt === "下午茶") return parts.some(x => /下午茶/.test(x));
+    if(opt === "海鮮") return parts.some(x => /海鮮|海產/.test(x)) || /海鮮|海產/.test(p.name);
+    return true;
+  }
+  const DEITY_ALIASES = [
+    ["玄天上帝", ["玄天上帝","真武大帝","上帝公","北極大帝","玄天大帝"]],
+    ["關聖帝君", ["關聖帝君","文衡聖帝","文衡關聖帝君","關公","關帝","五天聖帝","恩主公"]],
+    ["觀世音菩薩", ["觀世音菩薩","觀音佛祖","觀音菩薩","南海觀世音菩薩","觀音","觀音大士","觀世音"]],
+    ["天上聖母", ["天上聖母","媽祖","天后","天妃","媽祖娘娘"]],
+    ["福德正神", ["福德正神","土地公","伯公"]],
+    ["中壇元帥", ["中壇元帥","哪吒三太子","哪吒太子","三太子","中壇元帥三太子","太子爺"]],
+    ["玉皇大帝", ["玉皇大帝","玉皇大天尊","天公"]],
+    ["城隍", ["城隍","城隍尊神","城隍爺"]],
+    ["釋迦牟尼佛", ["釋迦牟尼佛","釋迦佛"]]
+  ];
+  function deityName(raw){
+    let s = String(raw || "").replace(/\s/g, "");
+    if(!s) return "";
+    const inParen = (s.match(/[（(]([^）)]+)[）)]/) || [])[1] || "";
+    for(const [main, names] of DEITY_ALIASES){
+      if(names.includes(s) || (inParen && names.includes(inParen)) || names.includes(s.replace(/[（(].*$/, ""))) return main;
+    }
+    const wang = s.match(/^([^府王千]{1})府?(王爺|千歲)$/) || s.match(/^([^府王千]{1})王$/);   /* 朱王爺、朱府千歲 → 朱府王爺 */
+    if(wang && wang[1] !== "諸") return wang[1] + "府王爺";
+    return s;
+  }
+  function deityGroups(raw){
+    return [...new Set(String(raw || "").split(/[、／/,，;；]+/).map(deityName).filter(Boolean))];
+  }
+  function subOptions(catKey){
+    if(catKey === "food") return FOOD_OPTS.map(o => [o, o, PLACES.food.filter(p=>foodMatch(p, o)).length]).filter(x => x[2] > 0);
+    if(catKey === "temple"){
+      const count = {};
+      PLACES.temple.forEach(p => (p.gods || []).forEach(g => { count[g] = (count[g] || 0) + 1; }));
+      return Object.entries(count).sort((a,b) => b[1] - a[1] || a[0].localeCompare(b[0], "zh-Hant")).map(([g, n]) => [g, g, n]);
+    }
+    return [];
+  }
+  function subMatch(catKey, p, val){
+    if(!val) return true;
+    if(catKey === "food") return foodMatch(p, val);
+    if(catKey === "temple") return (p.gods || []).includes(val);
+    return true;
+  }
   function buildPlaces(catKey, table){
     const seen = {};
     return toObjects(table).map(o=>{
@@ -4483,6 +4545,8 @@ html,body{background:linear-gradient(180deg,color-mix(in srgb,var(--c,#1f87c9) 2
       const lat = parseFloat(String(o.Latitude||"").replace(/,/g,"")), lng = parseFloat(String(o.Longitude||"").replace(/,/g,""));
       if(Number.isFinite(lat) && Number.isFinite(lng)){ p.lat = lat; p.lng = lng; }
       p.area = areaOf(o, p);
+      if(catKey === "food") p.kinds = [o["主類別"], o["類別"], o["代表餐食／服務"]].filter(Boolean).join("／");
+      if(catKey === "temple") p.gods = deityGroups(o["主祀"]);
       return p;
     }).filter(Boolean).map(p=>{
       let id = catKey + ":" + p.name + "|" + p.key;
@@ -4670,6 +4734,7 @@ html,body{background:linear-gradient(180deg,color-mix(in srgb,var(--c,#1f87c9) 2
       <p class="menu-msg" role="status"></p>
     </section>
     <div class="tabs" role="tablist" aria-label="分類">${CATS.map(c=>`<button type="button" role="tab" id="tab-${c.key}" data-c="${c.key}" style="--c:${c.color}">${c.name}<small></small></button>`).join("")}<button type="button" role="tab" id="tab-book" data-c="book" style="--c:${BOOK.color}">${BOOK.name}<small></small></button></div>
+    <div class="subsel" hidden><select id="sub-sel" aria-label="篩選"></select></div>
     <div class="cards"></div>
     <div class="checkin" role="dialog" aria-modal="true" aria-labelledby="ci-name" hidden>
       <button type="button" class="back" id="btn-back">← 返回清單</button>
@@ -4683,7 +4748,19 @@ html,body{background:linear-gradient(180deg,color-mix(in srgb,var(--c,#1f87c9) 2
     </div>`;
   const $ = s => root.querySelector(s);
   const cat = () => CATS.find(c=>c.key===st.cat);
-  const list = () => PLACES[st.cat];
+  const list = () => { const v = (st.sub || {})[st.cat] || ""; return v ? PLACES[st.cat].filter(p => subMatch(st.cat, p, v)) : PLACES[st.cat]; };
+  function renderSubSel(){
+    const box = $(".subsel"), sel = $("#sub-sel");
+    const show = st.screen === "list" && (st.cat === "food" || st.cat === "temple");
+    box.hidden = !show;
+    if(!show) return;
+    st.sub = st.sub || {};
+    const opts = subOptions(st.cat), cur = st.sub[st.cat] || "";
+    if(cur && !opts.some(o => o[0] === cur)) st.sub[st.cat] = "";
+    sel.innerHTML = `<option value="">${st.cat === "food" ? "全部美食" : "全部主祀"}（${PLACES[st.cat].length}）</option>`
+      + opts.map(([v, label, n]) => `<option value="${esc(v)}">${esc(label)}（${n}）</option>`).join("");
+    sel.value = st.sub[st.cat] || "";
+  }
   /* 卡片順序：有定位時由近到遠（沒有座標的排最後），沒開定位維持試算表原本順序 */
   let order = [];
   function sortedList(){
@@ -4762,12 +4839,17 @@ html,body{background:linear-gradient(180deg,color-mix(in srgb,var(--c,#1f87c9) 2
     const isBook = st.cat==="book";
     root.style.setProperty("--c", isBook ? BOOK.color : cat().color);
     try{ document.documentElement.style.setProperty("--c", isBook ? BOOK.color : cat().color); }catch(e){}
+    /* 底色：景點淡藍、美食淡橘、廟宇淡紅、集章冊淡珊瑚 */
+    const TINT = { spot:["#cfe6f7","#edf6fc"], food:["#fcdcc0","#fef1e4"], temple:["#f6cdca","#fcedec"], book:["#ffd6d1","#fff0ee"] };
+    const tint = TINT[st.cat] || TINT.spot;
+    [root, document.documentElement].forEach(el => { el.style.setProperty("--t1", tint[0]); el.style.setProperty("--t2", tint[1]); });
     root.querySelectorAll(".tabs button").forEach(b=>{
       const k = b.dataset.c;
       b.setAttribute("aria-selected", k===st.cat ? "true" : "false");
       b.querySelector("small").textContent = k==="book" ? Object.keys(st.done).length + "/" + total() : doneIn(k) + "/" + countable(k);
     });
     $(".prog").textContent = "集章 " + Object.keys(st.done).length + " / " + total();
+    renderSubSel();
     if(isBook){ stopMore(); $(".cards").innerHTML = bookHTML(); }
     else renderCards();
   }
@@ -4958,6 +5040,7 @@ html,body{background:linear-gradient(180deg,color-mix(in srgb,var(--c,#1f87c9) 2
     st.screen = name;
     const isMenu = name === "menu";
     $(".menu").hidden = !isMenu; $(".tabs").hidden = isMenu; $(".cards").hidden = isMenu; $("#btn-menu").hidden = isMenu;
+    if(isMenu) $(".subsel").hidden = true;
     if(isMenu){ renderMenu(); } else { menuMsg(""); render(); }
     try{ window.scrollTo(0, 0); }catch(e){}
   }
@@ -5013,6 +5096,7 @@ html,body{background:linear-gradient(180deg,color-mix(in srgb,var(--c,#1f87c9) 2
   $(".cloudform").addEventListener("submit", e=>{ e.preventDefault(); submitCloud(); });
   $("#btn-menu").addEventListener("click", ()=>showScreen("menu"));
 
+  $("#sub-sel").addEventListener("change", e=>{ st.sub = st.sub || {}; st.sub[st.cat] = e.target.value; shown = 0; render(); try{ window.scrollTo(0, 0); }catch(err){} });
   $(".tabs").addEventListener("click", e=>{ const b=e.target.closest("button[data-c]"); if(!b) return; if(st.cat!==b.dataset.c) shown = 0; st.cat=b.dataset.c; render(); });
   $(".cards").addEventListener("click", e=>{ if(e.target.closest("a.nav")) return; const b=e.target.closest("[data-id]"); if(b) openCheckin(b.dataset.id, b.dataset.c || st.cat); });
   $("#btn-back").addEventListener("click", closeCheckin);
@@ -5536,9 +5620,21 @@ regionCards.addEventListener('keydown', e => {
 });
 
 /* 篩選 */
+/* 手機版美食多出「早餐、午餐、晚餐」：看「類別」欄，早午餐同時算早餐與午餐 */
+const MEAL_CHIPS = ['早餐', '午餐', '晚餐'];
+function mealMatch(d, meal) {
+  const parts = String(d.category || '').split(/[／/、,，;；\s]+/).map(v => v.trim());
+  return parts.some(x => x === meal || (/^[早午晚]+餐$/.test(x) && x.includes(meal[0])));   /* 早午餐＝早餐＋午餐，以此類推 */
+}
+const MOBILE_HIDE_FOOD_CHIPS = ['伴手禮', '水果'];   /* 手機版美食不顯示的分類按鈕 */
 function renderSubFilters() {
   const cats = activeType ? [...new Set(allData.filter(d => d.type === activeType && (!activeRegion || d.region === activeRegion))
     .flatMap(d => (activeType === '美食' ? d.mainCategory : d.category).split(/[／/]/).map(v => v.trim())).filter(Boolean))] : [];
+  if (activeType === '美食' && isMobile()) {
+    const meals = MEAL_CHIPS.filter(m => allData.some(d => d.type === '美食' && (!activeRegion || d.region === activeRegion) && mealMatch(d, m)));
+    cats.unshift(...meals.filter(m => !cats.includes(m)));
+    for (let i = cats.length - 1; i >= 0; i--) if (MOBILE_HIDE_FOOD_CHIPS.includes(cats[i])) cats.splice(i, 1);
+  }
   if (!activeType || cats.length < 2 || cats.length > 24) { subFilters.hidden = true; subFilters.innerHTML = ''; activeSub = ''; return; }
   if (activeSub && !cats.includes(activeSub)) activeSub = '';
   subFilters.innerHTML = cats.map(c => `<button type="button" class="sub-chip${c === activeSub ? ' active' : ''}" data-sub="${esc(c)}">${esc(c)}</button>`).join('');
@@ -5548,7 +5644,8 @@ function applyFilter() {
   const q = searchInput.value.trim().toLowerCase();
   visibleData = allData.filter(d => (!activeRegion || d.region === activeRegion)
     && (!activeType || d.type === activeType)
-    && (!activeSub || (activeType === '美食' ? d.mainCategory : d.category).split(/[／/]/).map(v => v.trim()).includes(activeSub))
+    && (!activeSub || (activeType === '美食' && MEAL_CHIPS.includes(activeSub) ? mealMatch(d, activeSub)
+      : (activeType === '美食' ? d.mainCategory : d.category).split(/[／/]/).map(v => v.trim()).includes(activeSub)))
     && (!q || d.searchText.includes(q)));
   if (isMobile() && mapUserPos) {
     const dist = d => Math.hypot(d.lat - mapUserPos.lat, (d.lng - mapUserPos.lng) * Math.cos(mapUserPos.lat * Math.PI / 180));
