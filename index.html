@@ -690,6 +690,26 @@
       .ln-grid{grid-template-columns:1fr}
     }
 
+    /* 航班（手機）：只顯示倒數更新秒數 */
+    #view-flight .nx-cd{display:none}
+    @media(max-width:820px){
+      #view-flight #apStatus,#view-flight #apUpdated,#view-flight .nx-full,#view-flight .kv-hex{display:none}
+      #view-flight .nx-cd{display:inline}
+    }
+
+    /* 手機：底部各分頁有自己的顏色，選到時底色換成該分頁顏色 */
+    @media(max-width:820px){
+      .app-nav .nav-btn[data-go="home"]{--nc:#0369a1}
+      .app-nav .nav-btn[data-go="calendar"]{--nc:#7c3aed}
+      .app-nav .nav-btn[data-go="events"]{--nc:#ea580c}
+      .app-nav .nav-btn[data-go="tide"]{--nc:#0f8d96}
+      .app-nav .nav-btn[data-go="forecast"]{--nc:#2563eb}
+      .app-nav .nav-btn[data-go="map"]{--nc:#16a34a}
+      .app-nav .nav-btn[data-go="flight"]{--nc:#4338ca}
+      .app-nav .nav-btn[data-go="stamp"]{--nc:#e8554a}
+      .app-nav .nav-btn.active{background:color-mix(in srgb,var(--nc,#075985) 15%,#fff);color:var(--nc,#075985);box-shadow:inset 0 -3px 0 var(--nc,#075985)}
+    }
+
     /* 批次景點生圖指令 */
     #view-gen{overflow:hidden;background:#fff}
     #genFrame{display:block;width:100%;height:100%;border:0;background:#fff}
@@ -4211,13 +4231,25 @@ body{color:var(--navy);font-family:var(--f-game);line-height:1.55}
 .tabs button{flex:1;border:2px solid var(--line);background:#fff;border-radius:999px;padding:5px 0;font-size:15px;display:flex;flex-direction:column;align-items:center;line-height:1.25}
 .tabs button small{font-size:11px;opacity:.7;font-variant-numeric:tabular-nums}
 .tabs button[aria-selected="true"]{background:var(--c);border-color:#fff;color:#fff;box-shadow:0 4px 10px rgba(29,53,87,.22)}
+/* 底色跟著所選分類換色：景點藍、美食橘、廟宇紅、集章冊珊瑚 */
+html,body{background:linear-gradient(180deg,color-mix(in srgb,var(--c,#1f87c9) 20%,#fff) 0%,color-mix(in srgb,var(--c,#1f87c9) 7%,#fff) 45%,#fff3e2 100%) fixed;transition:background .3s}
+.screen{background:linear-gradient(180deg,color-mix(in srgb,var(--c) 14%,#fff) 0%,var(--sand) 100%)}
+.checkin{background:linear-gradient(180deg,color-mix(in srgb,var(--c) 14%,#fff) 0%,var(--sand) 100%)}
+/* 列表照片（有圖資來源才顯示） */
+.thumb{display:block;width:100%;aspect-ratio:16/9;border-radius:10px;overflow:hidden;background:#e8f1f5}
+.thumb img{display:block;width:100%;height:100%;object-fit:cover}
+/* 打卡畫面的資訊（美食、廟宇） */
+.ci-info{margin-inline:14px}
+.ci-info .ibox{display:block;background:#fff}
 .tabs button[aria-selected="true"] small{opacity:.9}
 
 /* info cards: list of places in the chosen category; tapping one opens its check-in view */
 .cards{display:flex;flex-direction:column;gap:12px;padding-inline:12px}
 .card{position:relative;display:flex;flex-direction:column;gap:8px;width:100%;text-align:left;background:#fff;border:1.5px solid #e9a66c;border-left:7px solid var(--bar);border-radius:14px;padding:12px 14px 14px;font-family:"Noto Sans TC",sans-serif;box-shadow:0 2px 8px rgba(29,53,87,.08);transition:transform .12s,box-shadow .12s}
 .card:hover{transform:translateY(-2px);box-shadow:0 6px 14px rgba(29,53,87,.14)}
-.card-hd{display:flex;align-items:center;gap:8px;padding-right:30px}
+.card-hd{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.card-tt{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;min-width:0;flex:1 1 auto}
+.card-tt b{overflow-wrap:anywhere}
 .card-hd b{font-size:16.5px;line-height:1.3;color:var(--navy)}
 .badge{flex:0 0 auto;font-size:11.5px;font-weight:700;color:#8a4a12;background:#fde7cf;border:1px solid #f3c597;border-radius:7px;padding:0 7px;white-space:nowrap}
 .check{position:absolute;top:12px;right:12px;width:22px;height:22px;border-radius:5px;border:2px solid #9bb8c6;background:#fff;display:grid;place-items:center;color:#fff;font-size:14px;line-height:1}
@@ -4229,10 +4261,16 @@ body{color:var(--navy);font-family:var(--f-game);line-height:1.55}
 .card{cursor:pointer;box-sizing:border-box}
 .more{height:1px}
 .card-ft{display:flex;justify-content:flex-end;align-items:center;gap:10px}
-.nav{display:inline-flex;align-items:center;gap:4px;min-height:34px;padding:0 14px;border-radius:999px;border:1.5px solid #17708a;color:#17708a;background:#eef8fb;font-size:13px;font-weight:700;text-decoration:none}
+.card-ft{flex-wrap:wrap;justify-content:flex-start}
+.card-ft .nav{margin-left:auto;flex:0 0 auto;width:132px;min-width:0;padding:0 12px;box-sizing:border-box}
+.card-ft .dist{margin-right:auto;display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:700;color:#17594a;background:#e3f6ec;border:1px solid #bfe5cf;border-radius:999px;padding:4px 11px;white-space:nowrap}
+.card-ft .dist.far{color:#4a5d68;background:#eef3f6;border-color:#d7e2e8}
+.nav{display:inline-flex;align-items:center;justify-content:center;gap:4px;min-height:36px;min-width:118px;padding:0 22px;border-radius:999px;border:1.5px solid #17708a;color:#17708a;background:#eef8fb;font-size:13px;font-weight:700;text-decoration:none}
 .nav:active{background:#d7eff5}
 .nav:focus-visible{outline:3px solid #ffcf3f;outline-offset:2px}
-.screen .card-open{background:none;border:0;padding:6px 2px;font-size:12.5px;font-weight:700;color:var(--c)!important}
+.screen .card-open{flex:0 0 auto;display:inline-flex;align-items:center;gap:2px;border:0;border-radius:999px;padding:6px 12px;font-size:13px;font-weight:700;white-space:nowrap;letter-spacing:.04em;color:#fff!important;background:linear-gradient(180deg,#ff8a6a,#ff5e57);box-shadow:0 3px 0 var(--coral-d),0 6px 12px rgba(255,94,87,.22)}
+.screen .card-open:active{transform:translateY(2px);box-shadow:0 1px 0 var(--coral-d)}
+.screen .card.done .card-open{color:var(--ok)!important;background:var(--ok-bg);box-shadow:0 3px 0 #a4d4b8}
 
 /* check-in view: slides over the list inside the game screen */
 .checkin{position:fixed;inset:0;margin-inline:auto;max-width:440px;z-index:50;display:flex;flex-direction:column;gap:10px;padding-block:calc(12px + env(safe-area-inset-top, 0px)) calc(20px + env(safe-area-inset-bottom, 0px));box-shadow:0 0 40px rgba(29,53,87,.25);background:linear-gradient(180deg,var(--sky) 0%,var(--sand) 100%);overflow-y:auto;animation:slidein .25s ease-out}
@@ -4638,6 +4676,7 @@ body{color:var(--navy);font-family:var(--f-game);line-height:1.55}
       <div class="scene"><div class="art"></div><div class="stamp-layer"></div><div class="burst"></div></div>
       <div class="dialog"><img class="portrait" src="${PORTRAIT}" alt=""><span class="who">熊熊</span><p class="line"></p></div>
       <div class="info"><div class="nm" id="ci-name"></div><div class="sub"></div><span class="gps"></span></div>
+      <div class="ci-info"></div>
       <div class="actions"><button type="button" class="stampbtn" id="btn-stamp"></button><button type="button" class="reset" id="btn-reset">重來</button></div>
       <div class="tools"><button type="button" class="tool" id="btn-dl">⬇️ 下載圖片</button><button type="button" class="tool" id="btn-pic">🖼️ 更換圖片</button><input type="file" id="pic-file" accept="image/*" hidden></div>
       <p class="tip" hidden></p>
@@ -4659,14 +4698,30 @@ body{color:var(--navy);font-family:var(--f-game);line-height:1.55}
   const total = () => CATS.reduce((n,c)=>n+countable(c.key),0);
   const addr = p => { const r = p.info.find(i=>i[0]==="地址"||i[0]==="地點"); return r ? r[1] : ""; };
 
+  /* 卡片底部：與目前位置的距離（沒開定位或沒座標時不顯示） */
+  function cardDist(p){
+    if(!lastPos || !Number.isFinite(p.lat)) return "";
+    const m = meters(lastPos, p);
+    const txt = m < 1000 ? Math.round(m) + " 公尺" : (m/1000).toFixed(m < 10000 ? 1 : 0) + " 公里";
+    return `<span class="dist${m <= nearM() ? "" : " far"}">📍 距離 ${txt}</span>`;
+  }
+  /* 列表照片：依序嘗試各個網址，都讀不到就整塊移除 */
+  window.__stampThumbErr = img => {
+    const list = (img.dataset.srcs || "").split("\n").filter(Boolean), i = Number(img.dataset.i || 0) + 1;
+    if(i < list.length){ img.dataset.i = i; img.src = list[i]; } else { const box = img.closest(".thumb"); if(box) box.remove(); }
+  };
+  function thumbHTML(p){
+    const srcs = st.pics[p.id] ? [st.pics[p.id]] : (p.img || []);
+    if(!srcs.length) return "";
+    return `<span class="thumb"><img src="${esc(srcs[0])}" data-srcs="${esc(srcs.join("\n"))}" data-i="0" alt="${esc(p.name)}" loading="lazy" referrerpolicy="no-referrer" onerror="__stampThumbErr(this)"></span>`;
+  }
   function cardHTML(p){
     const c = cat(), done = !!st.done[p.id];
     return `<div class="card${done?" done":""}" data-id="${p.id}" style="--bar:${p.bar}">
-      <span class="card-hd"><b>${esc(p.name)}</b><span class="badge">${c.badge}</span></span>
-      <span class="check" aria-label="${done?"已蓋章":"未蓋章"}">${done?"✓":""}</span>
+      <span class="card-hd"><span class="card-tt"><b>${esc(p.name)}</b><span class="badge">${c.badge}</span></span><button type="button" class="card-open">${done?"已蓋章 ✓":"前往打卡 →"}</button></span>
       <span class="meta">${p.meta.map(m=>`<span>${esc(m)}</span>`).join("")}</span>
-      <span class="ibox"><strong>ℹ️ 資訊</strong>${p.info.map(([k,v])=>`${esc(k)}：${esc(v)}`).join("<br>")}</span>
-      <span class="card-ft">${p.url?`<a class="nav" href="${esc(p.url)}" target="_blank" rel="noopener">🧭 導航</a>`:""}<button type="button" class="card-open">${done?"再看一次 →":"前往打卡 →"}</button></span>
+      ${thumbHTML(p)}
+      <span class="card-ft">${cardDist(p)}${p.url?`<a class="nav" href="${esc(p.url)}" target="_blank" rel="noopener">🧭 導航</a>`:""}</span>
     </div>`;
   }
   function bookHTML(){
@@ -4706,6 +4761,7 @@ body{color:var(--navy);font-family:var(--f-game);line-height:1.55}
   function render(){
     const isBook = st.cat==="book";
     root.style.setProperty("--c", isBook ? BOOK.color : cat().color);
+    try{ document.documentElement.style.setProperty("--c", isBook ? BOOK.color : cat().color); }catch(e){}
     root.querySelectorAll(".tabs button").forEach(b=>{
       const k = b.dataset.c;
       b.setAttribute("aria-selected", k===st.cat ? "true" : "false");
@@ -4725,6 +4781,7 @@ body{color:var(--navy);font-family:var(--f-game);line-height:1.55}
     $(".line").textContent = p.line;
     $(".nm").textContent = p.name;
     $(".sub").textContent = [addr(p), p.sub].filter(Boolean).join("．");
+    $(".ci-info").innerHTML = catKey === "spot" ? "" : `<span class="ibox"><strong>ℹ️ 資訊</strong>${p.info.map(([k,v])=>`${esc(k)}：${esc(v)}`).join("<br>")}</span>`;
     showDistance(p, id);
     stampBtn();
     ci.hidden = false; ci.scrollTop = 0;
@@ -5493,6 +5550,10 @@ function applyFilter() {
     && (!activeType || d.type === activeType)
     && (!activeSub || (activeType === '美食' ? d.mainCategory : d.category).split(/[／/]/).map(v => v.trim()).includes(activeSub))
     && (!q || d.searchText.includes(q)));
+  if (isMobile() && mapUserPos) {
+    const dist = d => Math.hypot(d.lat - mapUserPos.lat, (d.lng - mapUserPos.lng) * Math.cos(mapUserPos.lat * Math.PI / 180));
+    visibleData = visibleData.map((d, i) => [d, dist(d), i]).sort((a, b) => a[1] - b[1] || a[2] - b[2]).map(x => x[0]);
+  }
   resultCount.textContent = mapDataLoaded ? `顯示 ${visibleData.length}／${allData.length} 筆資料` : '正在讀取資料…';
   renderSubFilters();
   renderMarkers();
@@ -5595,13 +5656,15 @@ $('imageModal').addEventListener('click', e => { if (e.target.id !== 'imageModal
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeImageModal(); });
 
 /* 手機版：有開定位時，景點、美食、廟宇、其他店家的預設區域改成手機所在的鄉市（使用者已自選區域時不變） */
-let regionPicked = false;
+let regionPicked = false; var mapUserPos = null;
 regionSelect.addEventListener('change', () => { regionPicked = true; });
 function setRegionFromLocation() {
-  if (!isMobile() || regionPicked || activeRegion || !('geolocation' in navigator)) return;
+  if (!isMobile() || !('geolocation' in navigator)) return;
   navigator.geolocation.getCurrentPosition(pos => {
-    if (!isMobile() || regionPicked || activeRegion) return;
+    if (!isMobile()) return;
     const lat = pos.coords.latitude, lng = pos.coords.longitude, rad = x => x * Math.PI / 180;
+    mapUserPos = { lat, lng };   /* 手機清單由近到遠 */
+    if (regionPicked || activeRegion) { applyFilter(); return; }
     let best = null, bestKm = 10;   /* 10 公里內有資料點才算在澎湖 */
     for (const d of allData) {
       if (!Number.isFinite(d.lat) || !Number.isFinite(d.lng) || !d.region) continue;
@@ -5609,7 +5672,7 @@ function setRegionFromLocation() {
       const km = 12742 * Math.asin(Math.sqrt(a));
       if (km < bestKm) { bestKm = km; best = d; }
     }
-    if (!best || ![...regionSelect.options].some(o => o.value === best.region)) return;
+    if (!best || ![...regionSelect.options].some(o => o.value === best.region)) { applyFilter(); return; }
     regionSelect.value = best.region;
     selectRegion(best.region);
   }, () => {}, { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 });
@@ -6211,7 +6274,7 @@ const Flights = (() => {
         <div class="kv"><small>表定起飛</small><span class="time">${escapeHTML(row.scheduledStart || '—')}</span></div>
         <div class="kv"><small>${arrival ? '實際起飛' : '預估／實際起飛'}</small><span class="time">${escapeHTML(row.actualStart || '—')}</span></div>
         ${arrival ? `<div class="kv"><small>表定到達</small><span class="time">${escapeHTML(row.scheduledEnd || '—')}</span></div><div class="kv"><small>預估／實際到達</small><span class="time">${escapeHTML(row.actualEnd || '—')}</span></div>` : `<div class="kv"><small>登機門</small><span>${escapeHTML(row.gate || '—')}</span></div>`}
-        <div class="kv"><small>即時 HEX</small><span class="hex-id">${escapeHTML(row.hex || '—')}</span></div>
+        <div class="kv kv-hex"><small>即時 HEX</small><span class="hex-id">${escapeHTML(row.hex || '—')}</span></div>
       </div>
       ${trackingLinks(row.flight)}
     </article>`).join('')}</div>`;
@@ -6246,7 +6309,7 @@ const Flights = (() => {
     if (state.loading) { nextUpdateAt.textContent = '｜正在更新…'; return; }
     if (!state.nextRefreshAt) { nextUpdateAt.textContent = ''; return; }
     const seconds = Math.max(0, Math.ceil((state.nextRefreshAt - Date.now()) / 1000));
-    nextUpdateAt.textContent = `｜下次更新：${formatTaipeiDateTime(new Date(state.nextRefreshAt))}（${seconds} 秒後）`;
+    nextUpdateAt.innerHTML = `<span class="nx-full">｜下次更新：${formatTaipeiDateTime(new Date(state.nextRefreshAt))}（${seconds} 秒後）</span><span class="nx-cd">⟳ ${seconds} 秒後更新</span>`;
   }
   function scheduleNextRefresh() {
     clearTimeout(autoRefreshTimer);
@@ -6353,7 +6416,7 @@ const Cal = (() => {
 
   const colorOf = cat => FIXED_COLORS[cat] || (/花火|煙火/.test(cat) ? '#f59e0b' : PALETTE[[...cat].reduce((a, c) => a + c.charCodeAt(0), 0) % PALETTE.length]);
   const spanOf = it => daysBetween(it.start, it.end) + 1;
-  const isHidden = it => CFG.calendarHidden.includes(it.cat);
+  const isHidden = it => CFG.calendarHidden.includes(it.cat) || (isMobile() && !it.yearly && it.end < todayKey());   /* 手機版不顯示已過期項目 */
   function occurs(it, key) {
     if (it.yearly) return key.slice(5) === it.start.slice(5) && key >= it.start.slice(0, 4);
     return it.start <= key && key <= it.end;
