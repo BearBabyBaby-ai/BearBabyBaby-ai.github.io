@@ -4323,6 +4323,10 @@ html,body{background:linear-gradient(180deg,var(--t1,#d7efff) 0%,var(--t2,#f4fbf
 .tool:disabled{opacity:.6;cursor:default}
 .tip{margin:0 16px;font-size:12.5px;color:#4a5d68;text-align:center}
 .tip[hidden]{display:none}
+/* 手機全寬：拿掉外框與左右留白（原本是置中的手機外框造型） */
+.wrap{max-width:none;padding:0;gap:0}
+.screen{border:0;border-radius:0;box-shadow:none;min-height:100vh;padding-block:12px 24px}
+.checkin{max-width:none;box-shadow:none;background:linear-gradient(180deg,var(--t1,#e7f6ff) 0%,var(--sand) 100%)}
 .tabs[hidden],.cards[hidden],.menu[hidden],.menubtn[hidden],.cloudform[hidden],.subsel[hidden]{display:none}
 .subsel{padding-inline:12px}
 .subsel select{width:100%;font:inherit;font-size:15px;color:var(--navy);background:#fff;border:2px solid var(--line);border-radius:999px;padding:7px 14px;appearance:auto}
