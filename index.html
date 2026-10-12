@@ -4276,6 +4276,31 @@ body{color:var(--navy);font-family:var(--f-game);line-height:1.55}
 .tool:disabled{opacity:.6;cursor:default}
 .tip{margin:0 16px;font-size:12.5px;color:#4a5d68;text-align:center}
 .tip[hidden]{display:none}
+.tabs[hidden],.cards[hidden],.menu[hidden],.menubtn[hidden],.cloudform[hidden]{display:none}
+.menubtn{border:2px solid var(--line);background:#fff;border-radius:999px;padding:1px 10px;font-size:12.5px;white-space:nowrap}
+.menu{display:flex;flex-direction:column;gap:10px;padding-inline:14px}
+.menu-sum{background:#fff;border:2px solid var(--line);border-radius:16px;padding:12px 14px;font-size:13px;line-height:1.7;color:#33474f}
+.menu-sum b{font-size:22px;color:var(--coral);font-variant-numeric:tabular-nums}
+.menu-sum small{display:block;color:#6a8396;font-size:11.5px}
+.mbtn{display:flex;align-items:center;gap:12px;width:100%;min-height:58px;border:2px solid var(--line);background:#fff;border-radius:16px;padding:8px 14px;text-align:left;box-shadow:0 3px 8px rgba(29,53,87,.08)}
+.mbtn:active{background:#eef8fb}
+.mbtn .ico{font-size:24px;line-height:1}
+.mbtn b{display:block;font-size:16px;color:var(--navy)}
+.mbtn small{display:block;font-size:11.5px;color:#6a8396;font-family:"Noto Sans TC",sans-serif}
+.mbtn.main{background:linear-gradient(180deg,#ff8a6a,#ff5e57);border-color:#fff;box-shadow:0 5px 0 var(--coral-d),0 10px 18px rgba(255,94,87,.25)}
+.mbtn.main b,.mbtn.main small{color:#fff}
+.cloudform{display:flex;flex-direction:column;gap:8px;background:#fff;border:2px solid var(--line);border-radius:16px;padding:12px 14px;font-family:"Noto Sans TC",sans-serif}
+.cloudform h3{margin:0;font-size:15px;color:var(--navy)}
+.cloudform p{margin:0;font-size:12px;color:#4a5d68;line-height:1.6}
+.cloudform label{display:flex;flex-direction:column;gap:3px;font-size:12.5px;font-weight:700;color:var(--navy)}
+.cloudform input{font:inherit;font-weight:400;font-size:15px;border:1.5px solid #bcd3df;border-radius:10px;padding:8px 10px}
+.cloudform .row{display:flex;gap:8px}
+.cloudform .row button{flex:1;min-height:42px;border-radius:999px;border:2px solid var(--line);background:#fff;font-size:15px}
+.cloudform .row .ok{background:#17708a;border-color:#17708a;color:#fff!important}
+.cloudform .row .ok:disabled{opacity:.6}
+.menu-msg{margin:0;font-size:13px;text-align:center;color:#17594a;font-family:"Noto Sans TC",sans-serif}
+.menu-msg.err{color:#c0392b}
+.menu-msg:empty{display:none}
 
 .book{background:#fff;border:2px solid var(--line);border-radius:16px;padding:10px 10px 12px;display:flex;flex-direction:column;gap:8px}
 .book h2{margin:0;font-size:15px;display:flex;justify-content:space-between;align-items:baseline;color:var(--c)}
@@ -4427,6 +4452,53 @@ body{color:var(--navy);font-family:var(--f-game);line-height:1.55}
     });
   }
   const PLACES = {};
+
+  /* ---------- 保存在手機：蓋章紀錄（含蓋章日期，集章冊由此產生）存 localStorage；
+     手動更換過的圖片存 IndexedDB（沒更換的不存） ---------- */
+  const SAVE_KEY = "bearStamp.done.v1";
+  function loadDone(){
+    try{ const o = JSON.parse(localStorage.getItem(SAVE_KEY) || "{}"); return (o && typeof o.done === "object" && o.done) ? o.done : {}; }
+    catch(e){ return {}; }
+  }
+  function saveDone(){
+    try{ localStorage.setItem(SAVE_KEY, JSON.stringify({ v:1, done: st.done })); }catch(e){}
+  }
+  let picDb = null;
+  function openPicDb(){
+    if(!picDb) picDb = new Promise((ok, no) => {
+      try{
+        const r = indexedDB.open("bearStamp", 1);
+        r.onupgradeneeded = () => r.result.createObjectStore("pics");
+        r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error);
+      }catch(e){ no(e); }
+    });
+    return picDb;
+  }
+  async function picPut(id, blob){
+    const db = await openPicDb();
+    await new Promise((ok, no) => { const tx = db.transaction("pics", "readwrite"); tx.objectStore("pics").put(blob, id); tx.oncomplete = ok; tx.onerror = () => no(tx.error); });
+  }
+  async function picAll(){
+    const db = await openPicDb();
+    return new Promise((ok, no) => {
+      const out = {}, req = db.transaction("pics").objectStore("pics").openCursor();
+      req.onsuccess = () => { const c = req.result; if(c){ out[c.key] = c.value; c.continue(); } else ok(out); };
+      req.onerror = () => no(req.error);
+    });
+  }
+  /* 照片縮到長邊 1600px 再保存，避免佔用太多手機空間；無法解碼時保存原檔 */
+  async function shrinkPic(file){
+    try{
+      const url = URL.createObjectURL(file);
+      const im = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = url; });
+      URL.revokeObjectURL(url);
+      const k = Math.min(1, 1600 / Math.max(im.naturalWidth, im.naturalHeight));
+      const cv = document.createElement("canvas"); cv.width = Math.round(im.naturalWidth*k); cv.height = Math.round(im.naturalHeight*k);
+      cv.getContext("2d").drawImage(im, 0, 0, cv.width, cv.height);
+      const blob = await new Promise(ok => cv.toBlob(ok, "image/jpeg", 0.85));
+      return blob || file;
+    }catch(e){ return file; }
+  }
   Object.keys(SHEETS).forEach(k=>{ PLACES[k] = buildPlaces(k, SNAPSHOT[k]); });
 
   async function loadLive(){
@@ -4540,9 +4612,24 @@ body{color:var(--navy);font-family:var(--f-game);line-height:1.55}
   const esc = s => String(s).replace(/[&<>"]/g, ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch]));
   const root = document.getElementById("game");
   const BOOK = { key:"book", name:"集章冊", color:"var(--coral)" };   /* 4th tab: every stamp from 景點、美食、廟宇 */
-  const st = { cat:"spot", open:null, openCat:null, done:{}, pics:{} };   /* pics[id] = 使用者更換的圖片 */   /* open/openCat = place shown in the check-in view; done[id] = date */
+  const st = { cat:"spot", open:null, openCat:null, done:loadDone(), pics:{}, screen:"menu" };   /* pics[id] = 使用者更換的圖片 */   /* open/openCat = place shown in the check-in view; done[id] = date */
   root.innerHTML = `
-    <div class="topbar"><span class="gtitle"><img src="${PORTRAIT}" alt="熊熊"><span>熊熊島遊記</span></span><span class="prog"></span></div>
+    <div class="topbar"><span class="gtitle"><img src="${PORTRAIT}" alt="熊熊"><span>熊熊島遊記</span></span><span class="prog"></span><button type="button" class="menubtn" id="btn-menu" hidden>☰ 選單</button></div>
+    <section class="menu" aria-label="集章選單">
+      <div class="menu-sum">已蓋 <b class="menu-count">0</b> 個章<small class="menu-first"></small><small class="menu-dev"></small></div>
+      <button type="button" class="mbtn main" data-act="list"><span class="ico">🗺️</span><span><b>開啟景點</b><small>景點、美食、廟宇打卡蓋章與集章冊</small></span></button>
+      <button type="button" class="mbtn" data-act="save"><span class="ico">💾</span><span><b>儲存紀錄</b><small>把已蓋章的資訊存進這支手機</small></span></button>
+      <button type="button" class="mbtn" data-act="cloud-save"><span class="ico">☁️</span><span><b>雲端儲存</b><small>輸入姓名、手機、Email，確認後存到雲端</small></span></button>
+      <button type="button" class="mbtn" data-act="cloud-load"><span class="ico">📥</span><span><b>雲端載入</b><small>輸入姓名、手機、Email，確認後載入紀錄</small></span></button>
+      <form class="cloudform" hidden novalidate>
+        <h3 class="cf-title"></h3><p class="cf-note"></p>
+        <label>姓名<input name="name" autocomplete="name" required></label>
+        <label>手機<input name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="09xxxxxxxx" required></label>
+        <label>Email<input name="mail" type="email" inputmode="email" autocomplete="email" required></label>
+        <div class="row"><button type="button" class="cf-cancel">取消</button><button type="submit" class="ok cf-ok">確認</button></div>
+      </form>
+      <p class="menu-msg" role="status"></p>
+    </section>
     <div class="tabs" role="tablist" aria-label="分類">${CATS.map(c=>`<button type="button" role="tab" id="tab-${c.key}" data-c="${c.key}" style="--c:${c.color}">${c.name}<small></small></button>`).join("")}<button type="button" role="tab" id="tab-book" data-c="book" style="--c:${BOOK.color}">${BOOK.name}<small></small></button></div>
     <div class="cards"></div>
     <div class="checkin" role="dialog" aria-modal="true" aria-labelledby="ci-name" hidden>
@@ -4647,7 +4734,7 @@ body{color:var(--navy);font-family:var(--f-game);line-height:1.55}
   function closeCheckin(){
     const id = st.open;
     st.open = null; stopWatch();
-    if(st.hist){ st.hist = false; try{ history.back(); }catch(e){} }   /* App：用畫面上的返回按鈕關閉時，一併移除返回紀錄 */
+    if(st.hist){ st.hist = false; st.skipPop = true; try{ history.back(); }catch(e){ st.skipPop = false; } }   /* App：用畫面上的返回按鈕關閉時，一併移除返回紀錄 */
     $(".checkin").hidden = true;
     try{ document.body.style.overflow = ""; }catch(e){}
     render();
@@ -4772,12 +4859,14 @@ body{color:var(--navy);font-family:var(--f-game);line-height:1.55}
       } else tip("圖片產生失敗，請再試一次");
     }finally{ btn.disabled = false; }
   }
-  function changePic(file){
+  async function changePic(file){
     const p = place(); if(!p || !file || !/^image\//.test(file.type)) return;
-    if(st.pics[p.id]) URL.revokeObjectURL(st.pics[p.id]);
-    st.pics[p.id] = URL.createObjectURL(file);
-    showArt(p, st.openCat, st.open);
-    tip("已更換圖片");
+    const id = p.id, blob = await shrinkPic(file);
+    if(st.pics[id]) URL.revokeObjectURL(st.pics[id]);
+    st.pics[id] = URL.createObjectURL(blob);
+    if(st.open === id) showArt(p, st.openCat, st.open);
+    try{ await picPut(id, blob); tip("已更換圖片（已保存在這支手機）"); }
+    catch(e){ tip("已更換圖片（這個環境無法保存，重新開啟後會恢復原圖）"); }
   }
   function stampBtn(){
     const has = !!st.done[st.open], btn = $(".stampbtn"), p = st.open ? place() : null;
@@ -4786,14 +4875,98 @@ body{color:var(--navy);font-family:var(--f-game);line-height:1.55}
     btn.classList.toggle("locked", !!lock);
   }
 
+  /* ---------- 中間介面：開啟景點／儲存紀錄／雲端儲存／雲端載入 ---------- */
+  const DEVICE_KEY = "bearStamp.device", PROFILE_KEY = "bearStamp.profile";
+  function deviceId(){
+    try{
+      let id = localStorage.getItem(DEVICE_KEY);
+      if(!id){ id = "BB-" + Array.from(crypto.getRandomValues(new Uint8Array(4)), b=>b.toString(16).padStart(2,"0")).join("").toUpperCase(); localStorage.setItem(DEVICE_KEY, id); }
+      return id;
+    }catch(e){ return ""; }
+  }
+  function menuMsg(text, err){ const m = $(".menu-msg"); m.textContent = text || ""; m.classList.toggle("err", !!err); }
+  function renderMenu(){
+    const ids = Object.keys(st.done), dates = ids.map(id=>st.done[id]).sort();
+    $(".menu-count").textContent = ids.length;
+    $(".menu-first").textContent = dates.length ? "第一次集章：" + dates[0] : "還沒有蓋章紀錄";
+    const dev = deviceId(); $(".menu-dev").textContent = dev ? "裝置代號：" + dev : "";
+  }
+  function showScreen(name, fromPop){
+    if(!fromPop){
+      if(name === "list" && st.screen !== "list" && !st.listHist){ try{ history.pushState({ stampList: 1 }, ""); st.listHist = true; }catch(e){} }
+      else if(name === "menu" && st.listHist){ st.listHist = false; st.skipPop = true; try{ history.back(); }catch(e){ st.skipPop = false; } }
+    }
+    st.screen = name;
+    const isMenu = name === "menu";
+    $(".menu").hidden = !isMenu; $(".tabs").hidden = isMenu; $(".cards").hidden = isMenu; $("#btn-menu").hidden = isMenu;
+    if(isMenu){ renderMenu(); } else { menuMsg(""); render(); }
+    try{ window.scrollTo(0, 0); }catch(e){}
+  }
+  const cloudUrl = () => { try{ return (window.parent && typeof window.parent.stampCloudUrl === "function" && window.parent.stampCloudUrl()) || ""; }catch(e){ return ""; } };
+  let cloudMode = "";
+  function openCloudForm(mode){
+    cloudMode = mode; menuMsg("");
+    const f = $(".cloudform"), n = Object.keys(st.done).length;
+    $(".cf-title").textContent = mode === "save" ? "☁️ 雲端儲存" : "📥 雲端載入";
+    $(".cf-note").textContent = mode === "save"
+      ? `將這支手機的 ${n} 個章存到雲端（與雲端原有紀錄合併，同一個章保留最早的蓋章日期）。`
+      : "輸入當初雲端儲存時的姓名、手機、Email，載入後會與這支手機的紀錄合併。";
+    try{ const p = JSON.parse(localStorage.getItem(PROFILE_KEY) || "{}"); ["name","phone","mail"].forEach(k=>{ if(p[k] && !f.elements[k].value) f.elements[k].value = p[k]; }); }catch(e){}
+    f.hidden = false; f.elements.name.focus();
+  }
+  function closeCloudForm(){ $(".cloudform").hidden = true; cloudMode = ""; }
+  async function submitCloud(){
+    const f = $(".cloudform");
+    const name = f.elements.name.value.trim(), phone = f.elements.phone.value.replace(/\D/g,""), mail = f.elements.mail.value.trim().toLowerCase();
+    if(!name) return menuMsg("請輸入姓名", true);
+    if(phone.length < 8) return menuMsg("請輸入正確的手機號碼", true);
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail)) return menuMsg("請輸入正確的 Email", true);
+    const url = cloudUrl();
+    if(!url) return menuMsg("尚未設定雲端網址（試算表「系統設定」的「集章雲端網址」）", true);
+    try{ localStorage.setItem(PROFILE_KEY, JSON.stringify({ name, phone, mail })); }catch(e){}
+    const ok = $(".cf-ok"); ok.disabled = true; menuMsg(cloudMode === "save" ? "正在存到雲端…" : "正在從雲端載入…");
+    try{
+      const payload = { action: cloudMode === "save" ? "save" : "load", name, phone, mail, device: deviceId() };
+      if(cloudMode === "save") payload.done = st.done;
+      const res = await fetch(url, { method:"POST", body: JSON.stringify(payload) });
+      const data = await res.json();
+      if(!data.ok) throw new Error(data.error || "雲端回應錯誤");
+      if(cloudMode === "save"){
+        closeCloudForm(); menuMsg(`✅ 已存到雲端，雲端共 ${data.count} 個章`);
+      } else {
+        let added = 0;
+        Object.entries(data.done || {}).forEach(([id, date])=>{ if(!st.done[id] || String(date) < String(st.done[id])){ if(!st.done[id]) added++; st.done[id] = String(date); } });
+        saveDone(); closeCloudForm(); renderMenu();
+        menuMsg(`✅ 已載入雲端紀錄（雲端 ${data.count} 個章，新增 ${added} 個），目前共 ${Object.keys(st.done).length} 個章`);
+      }
+    }catch(e){
+      menuMsg("⚠️ " + (e && e.message ? e.message : "連線失敗，請確認網路後再試"), true);
+    }finally{ ok.disabled = false; }
+  }
+  $(".menu").addEventListener("click", e=>{
+    const b = e.target.closest("[data-act]"); if(!b) return;
+    const act = b.dataset.act;
+    if(act === "list"){ closeCloudForm(); showScreen("list"); }
+    else if(act === "save"){ closeCloudForm(); saveDone(); renderMenu(); menuMsg(`✅ 已將 ${Object.keys(st.done).length} 個章的紀錄存進這支手機`); }
+    else openCloudForm(act === "cloud-save" ? "save" : "load");
+  });
+  $(".cf-cancel").addEventListener("click", ()=>{ closeCloudForm(); menuMsg(""); });
+  $(".cloudform").addEventListener("submit", e=>{ e.preventDefault(); submitCloud(); });
+  $("#btn-menu").addEventListener("click", ()=>showScreen("menu"));
+
   $(".tabs").addEventListener("click", e=>{ const b=e.target.closest("button[data-c]"); if(!b) return; if(st.cat!==b.dataset.c) shown = 0; st.cat=b.dataset.c; render(); });
   $(".cards").addEventListener("click", e=>{ if(e.target.closest("a.nav")) return; const b=e.target.closest("[data-id]"); if(b) openCheckin(b.dataset.id, b.dataset.c || st.cat); });
   $("#btn-back").addEventListener("click", closeCheckin);
-  window.addEventListener("popstate", ()=>{ if(st.hist && st.open){ st.hist = false; closeCheckin(); } else st.hist = false; });
+  window.addEventListener("popstate", ()=>{
+    if(st.skipPop){ st.skipPop = false; return; }
+    if(st.hist && st.open){ st.hist = false; closeCheckin(); return; }
+    st.hist = false;
+    if(st.listHist && st.screen === "list"){ st.listHist = false; showScreen("menu", true); }
+  });
   document.addEventListener("keydown", e=>{ if(e.key==="Escape" && st.open) closeCheckin(); });
   $(".stampbtn").addEventListener("click", ()=>{
     const p = place(); if(!p || st.done[p.id] || stampLock(p)) return;
-    st.done[p.id] = TODAY;
+    st.done[p.id] = TODAY; saveDone();
     const layer = $(".stamp-layer");
     layer.innerHTML = stampHTML(st.openCat,p);
     layer.firstElementChild.classList.add("slam");
@@ -4807,9 +4980,15 @@ body{color:var(--navy);font-family:var(--f-game);line-height:1.55}
   $("#btn-dl").addEventListener("click", downloadScene);
   $("#btn-pic").addEventListener("click", ()=>$("#pic-file").click());
   $("#pic-file").addEventListener("change", e=>{ changePic(e.target.files[0]); e.target.value = ""; });
-  $(".reset").addEventListener("click", ()=>{ st.done = {}; $(".stamp-layer").innerHTML = ""; stampBtn(); render(); });
+  $(".reset").addEventListener("click", ()=>{ st.done = {}; saveDone(); $(".stamp-layer").innerHTML = ""; stampBtn(); render(); });
   render();
-  loadLive().then(()=>render());
+  showScreen("menu");
+  loadLive().then(()=>{ render(); if(st.screen === "menu") renderMenu(); });
+  /* 讀回這支手機保存過的更換圖片 */
+  picAll().then(saved => {
+    Object.entries(saved).forEach(([id, blob]) => { if(blob && !st.pics[id]) st.pics[id] = URL.createObjectURL(blob); });
+    if(st.open){ const p = place(); if(p && saved[p.id]) showArt(p, st.openCat, st.open); }
+  }).catch(()=>{});
   /* 開啟集章卡時取得一次位置，用來把清單排成由近到遠 */
   if("geolocation" in navigator){
     navigator.geolocation.getCurrentPosition(pos=>{
@@ -4923,7 +5102,7 @@ const CFG = {
   defaultView: 'home'
 };
 const OLD_LOGO_URL = 'https://lh3.googleusercontent.com/d/1rYf3EqwjJBh7pfyYFniBu5AjcKk8drS5';
-const HUB_KEYS = { '系統名稱': 'title', '副標題': 'sub', 'LOGO檔案ID': 'logoId', '潮汐預報預設區域': 'forecastDefault', '航班自動更新秒數': 'flightRefreshSec', '月曆隱藏類別': 'calendarHidden', '首頁近期天數': 'homeDays', '活動提前顯示天數': 'activityLeadDays', '預設開啟分頁': 'defaultView' };
+const HUB_KEYS = { '系統名稱': 'title', '副標題': 'sub', 'LOGO檔案ID': 'logoId', '潮汐預報預設區域': 'forecastDefault', '航班自動更新秒數': 'flightRefreshSec', '月曆隱藏類別': 'calendarHidden', '首頁近期天數': 'homeDays', '活動提前顯示天數': 'activityLeadDays', '預設開啟分頁': 'defaultView', '集章雲端網址': 'stampCloudUrl' };
 const VIEW_NAMES = { '首頁': 'home', '地圖': 'map', '活動': 'events', '分海': 'tide', '潮汐': 'forecast', '航班': 'flight', '月曆': 'calendar', '元宵': 'events', '生圖': 'gen', '集章': 'stamp', '集章卡': 'stamp' };
 const DEFAULT_LINKS = [
   { name: '澎湖國家風景區管理處', url: 'https://www.penghu-nsa.gov.tw/', note: '活動與旅遊資訊' },
@@ -5023,6 +5202,8 @@ function loadGenerator() {
   frame.srcdoc = '<!DOCTYPE html>\n<html lang="zh-TW">\n' + $('genTemplate').innerHTML + '\n</html>';
   frame.hidden = false;
 }
+/* 集章卡的雲端儲存／載入網址（系統設定「集章雲端網址」），由集章卡頁面讀取 */
+function stampCloudUrl() { return CFG.stampCloudUrl || ''; }
 /* 熊熊集章卡：第一次開啟時才把原始頁面載入 iframe */
 function loadStamp() {
   const frame = $('stampFrame');
