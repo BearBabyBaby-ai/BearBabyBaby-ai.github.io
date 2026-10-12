@@ -4492,14 +4492,16 @@ html,body{background:linear-gradient(180deg,var(--t1,#d7efff) 0%,var(--t2,#f4fbf
   const areaName = a => a === MAIN ? MAIN : a + "（離島）";
   /* ---------- 下拉篩選：美食依餐別／類型，廟宇依主祀（同一位神明的別稱合併） ---------- */
   const FOOD_OPTS = ["早餐","午餐","晚餐","宵夜","素食","飲品","下午茶","海鮮"];
+  /* 餐別（早餐／午餐／晚餐／宵夜／素食）只看「類別」欄；飲品、下午茶看主類別＋類別；海鮮另外看代表餐食與店名 */
   function foodMatch(p, opt){
-    const parts = String(p.kinds || "").split(/[／/、,，;；\s]+/).map(v=>v.trim()).filter(Boolean);
-    if(["早餐","午餐","晚餐"].includes(opt)) return parts.some(x => x === opt || (/^[早午晚]+餐$/.test(x) && x.includes(opt[0])));
-    if(opt === "宵夜") return parts.some(x => /宵夜|消夜/.test(x));
-    if(opt === "素食") return parts.some(x => /素/.test(x));
-    if(opt === "飲品") return parts.some(x => /飲品|飲料|手搖|茶飲/.test(x));
-    if(opt === "下午茶") return parts.some(x => /下午茶/.test(x));
-    if(opt === "海鮮") return parts.some(x => /海鮮|海產/.test(x)) || /海鮮|海產/.test(p.name);
+    const split = s => String(s || "").split(/[／/、,，;；\s]+/).map(v=>v.trim()).filter(Boolean);
+    const cat2 = split(p.cat2), kinds = split(p.kinds);
+    if(["早餐","午餐","晚餐"].includes(opt)) return cat2.some(x => x === opt || (/^[早午晚]+餐$/.test(x) && x.includes(opt[0])));
+    if(opt === "宵夜") return cat2.some(x => /宵夜|消夜/.test(x));
+    if(opt === "素食") return cat2.some(x => /素/.test(x));
+    if(opt === "飲品") return kinds.some(x => /飲品|飲料|手搖|茶飲/.test(x));
+    if(opt === "下午茶") return kinds.some(x => /下午茶/.test(x));
+    if(opt === "海鮮") return kinds.some(x => /海鮮|海產/.test(x)) || /海鮮|海產/.test(p.extra + " " + p.name);
     return true;
   }
   const DEITY_ALIASES = [
@@ -4549,7 +4551,7 @@ html,body{background:linear-gradient(180deg,var(--t1,#d7efff) 0%,var(--t2,#f4fbf
       const lat = parseFloat(String(o.Latitude||"").replace(/,/g,"")), lng = parseFloat(String(o.Longitude||"").replace(/,/g,""));
       if(Number.isFinite(lat) && Number.isFinite(lng)){ p.lat = lat; p.lng = lng; }
       p.area = areaOf(o, p);
-      if(catKey === "food") p.kinds = [o["主類別"], o["類別"], o["代表餐食／服務"]].filter(Boolean).join("／");
+      if(catKey === "food"){ p.cat2 = o["類別"] || ""; p.kinds = [o["主類別"], o["類別"]].filter(Boolean).join("／"); p.extra = o["代表餐食／服務"] || ""; }
       if(catKey === "temple") p.gods = deityGroups(o["主祀"]);
       return p;
     }).filter(Boolean).map(p=>{
