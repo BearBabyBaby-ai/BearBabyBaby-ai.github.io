@@ -4441,7 +4441,9 @@ html,body{background:linear-gradient(180deg,var(--t1,#d7efff) 0%,var(--t2,#f4fbf
     if(/^https?:\/\/\S+\.(?:jpe?g|png|webp|gif)(?:\?\S*)?$/i.test(s)) return [s];
     return [];
   };
-  const mapUrl = (o) => o["完整網址"] || o["短網址"] || ((o.Latitude && o.Longitude) ? `https://www.google.com/maps/search/?api=1&query=${o.Latitude},${o.Longitude}` : "");
+  /* 導航：有座標就直接用目的地座標開 Google 地圖導航，沒有座標才用試算表的連結 */
+  const mapUrl = (o) => { const la = parseFloat(String(o.Latitude||"").replace(/,/g,"")), ln = parseFloat(String(o.Longitude||"").replace(/,/g,""));
+    return (Number.isFinite(la) && Number.isFinite(ln)) ? `https://www.google.com/maps/dir/?api=1&destination=${la},${ln}` : (o["完整網址"] || o["短網址"] || ""); };
   const keep = arr => arr.filter(x => Array.isArray(x) ? x[1] : x);
 
   const BUILD = {
@@ -5452,6 +5454,8 @@ function imageUrl(value) {
   return match ? `https://drive.google.com/thumbnail?id=${encodeURIComponent(match[1])}&sz=w1200` : validFullUrl(raw);
 }
 function getTargetUrl(d) {
+  /* 手機：直接用目的地座標開 Google 地圖導航（店家連結在手機 App 裡常只停在使用者目前位置） */
+  if (isMobile() && Number.isFinite(d.lat) && Number.isFinite(d.lng)) return `https://www.google.com/maps/dir/?api=1&destination=${d.lat},${d.lng}`;
   return validFullUrl(d.fullUrl) || validFullUrl(d.mapUrl)
     || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${d.name} ${d.lat},${d.lng}`)}`;
 }
