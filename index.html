@@ -1022,7 +1022,7 @@
     </section>
     <!-- ================= 熊熊集章卡（熊熊島遊記，僅手機版顯示） ================= -->
     <section class="view" id="view-stamp" aria-label="熊熊集章卡" hidden>
-      <iframe id="stampFrame" title="熊熊島遊記・集章卡" allow="geolocation" hidden></iframe>
+      <iframe id="stampFrame" title="熊熊島遊記・集章卡" allow="geolocation; web-share" hidden></iframe>
     </section>
   </main>
 </div>
@@ -4373,7 +4373,7 @@ html,body{background:linear-gradient(180deg,var(--t1,#d7efff) 0%,var(--t2,#f4fbf
 /* stamp: frame drawn in SVG, the bear logo inked through a mask in the category colour */
 .stamp{position:relative;aspect-ratio:1;color:var(--c)}
 .stamp svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
-.stamp .bear{position:absolute;left:24%;top:20%;width:52%;height:52%;background:currentColor;-webkit-mask:var(--bear) center/contain no-repeat;mask:var(--bear) center/contain no-repeat;clip-path:circle(50%);opacity:.92}
+.stamp .bear{position:absolute;left:28.3%;top:17.5%;width:43.4%;height:43.4%;background:currentColor;-webkit-mask:var(--bear) center/contain no-repeat;mask:var(--bear) center/contain no-repeat;clip-path:circle(50%);opacity:.92}
 .stamp.temple .bear{clip-path:inset(0 round 14%)}
 
 @media (prefers-reduced-motion: reduce){.slam,.burst.go,.shake,.checkin{animation:none!important}}
@@ -4682,12 +4682,18 @@ html,body{background:linear-gradient(180deg,var(--t1,#d7efff) 0%,var(--t2,#f4fbf
   /* ---------- stamps: one design per category, all built around the 熊熊 logo ---------- */
   let uid = 0;
   const SCALLOP = (()=>{ const n=30, pts=[]; for(let i=0;i<=n*2;i++){ const a=i/(n*2)*Math.PI*2-Math.PI/2, r=i%2?52.5:57; pts.push((60+r*Math.cos(a)).toFixed(1)+" "+(60+r*Math.sin(a)).toFixed(1)); } return "M"+pts.join(" L")+"Z"; })();
+  /* 蓋章當下的日期＋時間 */
+  function nowStamp(){
+    const n = new Date(), z = v => String(v).padStart(2, "0");
+    return `${n.getFullYear()}/${z(n.getMonth()+1)}/${z(n.getDate())} ${z(n.getHours())}:${z(n.getMinutes())}`;
+  }
   function stampFrame(catKey, place){
     const cat = CATS.find(c=>c.key===catKey);
     const id = "st"+(++uid);
     const nm = place.name;
     const fs = Math.min(14, 120/nm.length).toFixed(1);
     const head = "熊熊集章・" + cat.name;
+    const when = (st && st.done && st.done[place.id]) ? String(st.done[place.id]) : "";   /* 蓋章日期＋時間 */
     let frame;
     if(cat.shape==="square"){
       const sfs = Math.min(13, 92/nm.length).toFixed(1);
@@ -4695,7 +4701,8 @@ html,body{background:linear-gradient(180deg,var(--t1,#d7efff) 0%,var(--t2,#f4fbf
         <rect x="10" y="10" width="100" height="100" rx="10" fill="none" stroke="currentColor" stroke-width="1.3"/>
         <g fill="currentColor"><circle cx="17" cy="17" r="2"/><circle cx="103" cy="17" r="2"/><circle cx="17" cy="103" r="2"/><circle cx="103" cy="103" r="2"/></g>
         <text x="60" y="21" text-anchor="middle" font-size="8.5" letter-spacing="1.5" fill="currentColor">${head}</text>
-        <text x="60" y="104" text-anchor="middle" font-size="${sfs}" font-weight="700" fill="currentColor">${nm}</text>`;
+        <text x="60" y="104" text-anchor="middle" font-size="${sfs}" font-weight="700" fill="currentColor">${nm}</text>${when ? `
+        <text x="60" y="86" text-anchor="middle" font-size="7.6" font-weight="700" letter-spacing=".3" fill="currentColor">${when}</text>` : ""}`;
     } else {
       const outer = cat.shape==="scallop"
         ? `<path d="${SCALLOP}" fill="var(--paper,rgba(255,255,255,.45))" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><circle cx="60" cy="60" r="47" fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="3 3.5"/>`
@@ -4704,7 +4711,8 @@ html,body{background:linear-gradient(180deg,var(--t1,#d7efff) 0%,var(--t2,#f4fbf
         ${outer}
         <text font-size="8.5" letter-spacing="1.5" fill="currentColor"><textPath href="#${id}t" startOffset="50%" text-anchor="middle">${head}</textPath></text>
         <text font-size="${fs}" font-weight="700" fill="currentColor"><textPath href="#${id}b" startOffset="50%" text-anchor="middle">${nm}</textPath></text>
-        <g fill="currentColor"><circle cx="11" cy="60" r="2"/><circle cx="109" cy="60" r="2"/></g>`;
+        <g fill="currentColor"><circle cx="11" cy="60" r="2"/><circle cx="109" cy="60" r="2"/></g>${when ? `
+        <text x="60" y="84" text-anchor="middle" font-size="7.6" font-weight="700" letter-spacing=".3" fill="currentColor">${when}</text>` : ""}`;
     }
     return frame;
   }
@@ -4751,7 +4759,7 @@ html,body{background:linear-gradient(180deg,var(--t1,#d7efff) 0%,var(--t2,#f4fbf
       <div class="info"><div class="nm" id="ci-name"></div><div class="sub"></div><span class="gps"></span></div>
       <div class="ci-info"></div>
       <div class="actions"><button type="button" class="stampbtn" id="btn-stamp"></button><button type="button" class="reset" id="btn-reset">重來</button></div>
-      <div class="tools"><button type="button" class="tool" id="btn-dl">⬇️ 下載圖片</button><button type="button" class="tool" id="btn-pic">🖼️ 更換圖片</button><input type="file" id="pic-file" accept="image/*" hidden></div>
+      <div class="tools"><button type="button" class="tool" id="btn-dl">📤 分享圖片</button><button type="button" class="tool" id="btn-pic">🖼️ 更換圖片</button><input type="file" id="pic-file" accept="image/*" hidden></div>
       <p class="tip" hidden></p>
     </div>`;
   const $ = s => root.querySelector(s);
@@ -4866,7 +4874,7 @@ html,body{background:linear-gradient(180deg,var(--t1,#d7efff) 0%,var(--t2,#f4fbf
     const p = place(), ci = $(".checkin");
     st.openPlace = p;
     showArt(p, catKey, id);
-    tip("");
+    tip(""); prepareShare();
     $(".stamp-layer").innerHTML = st.done[p.id] ? stampHTML(catKey,p) : "";
     $(".line").textContent = p.line;
     $(".nm").textContent = p.name;
@@ -4964,56 +4972,115 @@ html,body{background:linear-gradient(180deg,var(--t1,#d7efff) 0%,var(--t2,#f4fbf
   function stampSVG(catKey, p){
     const color = HEX[catKey];
     const bear = (getComputedStyle(document.documentElement).getPropertyValue("--bear").match(/url\(["']?(data:[^"')]+)["']?\)/) || [])[1] || "";
-    const clip = catKey === "temple" ? `<rect x="28.8" y="24" width="62.4" height="62.4" rx="8.7"/>` : `<circle cx="60" cy="55.2" r="31.2"/>`;
+    const clip = catKey === "temple" ? `<rect x="34" y="21" width="52" height="52" rx="7.3"/>` : `<circle cx="60" cy="47" r="26"/>`;
     const frame = stampFrame(catKey, p).replace(/var\(--paper,[^)]*\)\)/g, "rgba(255,255,255,.88)");
     return `<svg viewBox="0 0 120 120" width="600" height="600" color="${color}" font-family="'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif" overflow="visible"><defs>${ROUGH}
-      <mask id="bm" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="120" height="120"><image href="${bear}" xlink:href="${bear}" x="28.8" y="24" width="62.4" height="62.4" preserveAspectRatio="xMidYMid meet"/></mask>
+      <mask id="bm" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="120" height="120"><image href="${bear}" xlink:href="${bear}" x="34" y="21" width="52" height="52" preserveAspectRatio="xMidYMid meet"/></mask>
       <clipPath id="bc">${clip}</clipPath></defs>
       <g filter="url(#aRough)">${frame}</g>
-      <g clip-path="url(#bc)"><rect x="28.8" y="24" width="62.4" height="62.4" fill="${color}" opacity=".92" mask="url(#bm)"/></g></svg>`;
+      <g clip-path="url(#bc)"><rect x="34" y="21" width="52" height="52" fill="${color}" opacity=".92" mask="url(#bm)"/></g></svg>`;
   }
-  async function downloadScene(){
-    const p = place(); if(!p) return;
-    const catKey = st.openCat, btn = $("#btn-dl"), shown = $(".art img.photo");
-    btn.disabled = true; tip("正在產生圖片…");
-    const W = 1440, H = 880, cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+  /* 下載圖片下方的資訊區：熊熊島遊記、地點名稱、分類與地址、蓋章日期時間 */
+  function drawInfoBand(ctx, p, catKey, W, H, BAND){
+    const cat = CATS.find(c=>c.key===catKey) || CATS[0], color = HEX[catKey] || "#1f87c9";
+    const font = (size, weight) => `${weight||400} ${size}px "Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif`;
+    ctx.fillStyle = "#fffaf3"; ctx.fillRect(0, H, W, BAND);
+    ctx.fillStyle = color; ctx.fillRect(0, H, 18, BAND);
+    ctx.fillRect(0, H, W, 8);
+    const x = 70; let y = H + 86;
+    ctx.textBaseline = "alphabetic";
+    ctx.fillStyle = "#ff6b5e"; ctx.font = font(34, 700); ctx.fillText("熊熊島遊記・" + cat.name, x, y);
+    y += 82; ctx.fillStyle = "#1d3557";
+    let size = 66; ctx.font = font(size, 700);
+    while(ctx.measureText(p.name).width > W - x*2 && size > 36){ size -= 2; ctx.font = font(size, 700); }
+    ctx.fillText(p.name, x, y);
+    const sub = [addr(p), p.sub].filter(Boolean).join("．");
+    if(sub){
+      y += 58; ctx.fillStyle = "#4a5d68"; ctx.font = font(32, 400);
+      let s = sub; while(ctx.measureText(s).width > W - x*2 && s.length > 4) s = s.slice(0, -2);
+      ctx.fillText(s === sub ? s : s + "…", x, y);
+    }
+    y += 70;
+    const done = st.done[p.id];
+    ctx.font = font(36, 700); ctx.fillStyle = done ? "#17794a" : "#8a9aa5";
+    ctx.fillText(done ? `✔ 蓋章時間：${done}` : "尚未蓋章", x, y);
+  }
+  /* ---------- 分享圖片：蓋章後才能用；先在背景做好圖片，按下時立刻開手機分享選單（相簿、LINE…） ---------- */
+  let shareJob = 0;
+  function shareNav(){
+    /* App 版的集章卡在同網域的框架裡：改由最外層頁面開分享選單，避免框架權限擋住；拿不到時用自己的 */
+    try{ if(window.top && window.top.navigator && typeof window.top.navigator.share === "function") return window.top.navigator; }catch(e){}
+    return navigator;
+  }
+  function dlBtnState(){
+    const btn = $("#btn-dl"), p = st.open ? place() : null, has = !!(p && st.done[p.id]);
+    btn.disabled = !has || (has && !st.shareFile);
+    btn.textContent = !has ? "📤 蓋章後可分享" : (st.shareFile && st.shareFile.id === p.id ? "📤 分享圖片" : "⏳ 準備圖片中…");
+  }
+  async function buildShareFile(p, catKey){
+    const W = 1440, H = 880, BAND = 360, cv = document.createElement("canvas"); cv.width = W; cv.height = H + BAND;
     const ctx = cv.getContext("2d");
-    let photoSrc = "";
+    let bg = null;
+    const tries = st.pics[p.id] ? [st.pics[p.id]] : (p.img || []);
+    for(const s of tries){ try{ bg = await loadPhoto(s); break; }catch(e){} }
+    if(!bg) bg = await loadImage(svgUrl(SCENES[catKey]));   /* 照片讀不到時用插畫 */
+    const iw = bg.naturalWidth || W, ih = bg.naturalHeight || H, k = Math.max(W/iw, H/ih);
+    ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();
+    ctx.drawImage(bg, (W - iw*k)/2, (H - ih*k)/2, iw*k, ih*k); ctx.restore();
+    drawInfoBand(ctx, p, catKey, W, H, BAND);
+    const sm = await loadImage(svgUrl(stampSVG(catKey, p))), sw = W*0.46;
+    ctx.save(); ctx.translate(W/2, H/2); ctx.rotate(-8*Math.PI/180);
+    ctx.shadowColor = "rgba(29,53,87,.3)"; ctx.shadowBlur = 16; ctx.shadowOffsetY = 6;
+    ctx.drawImage(sm, -sw/2, -sw/2, sw, sw); ctx.restore();
+    const blob = await new Promise((ok, no) => cv.toBlob(b => b ? ok(b) : no(new Error("blob")), "image/jpeg", 0.92));
+    const fname = `熊熊集章_${p.name.replace(/[\\/:*?"<>|]/g,"")}.jpg`;
+    return new File([blob], fname, { type: "image/jpeg" });
+  }
+  async function prepareShare(){
+    const p = st.open ? place() : null, catKey = st.openCat;
+    st.shareFile = null;
+    if(!p || !st.done[p.id]){ dlBtnState(); return; }
+    const job = ++shareJob;
+    dlBtnState();
     try{
-      let bg;
-      if(shown && shown.naturalWidth){
-        photoSrc = shown.currentSrc || shown.src;
-        const tries = [photoSrc, ...(st.pics[p.id] ? [] : p.img.filter(s=>s!==photoSrc))];
-        for(const s of tries){ try{ bg = await loadPhoto(s); break; }catch(e){} }
-        if(!bg) throw new Error("photo-cors");
-      } else bg = await loadImage(svgUrl(SCENES[catKey]));
-      const iw = bg.naturalWidth || W, ih = bg.naturalHeight || H, k = Math.max(W/iw, H/ih);
-      ctx.drawImage(bg, (W - iw*k)/2, (H - ih*k)/2, iw*k, ih*k);
-      if(st.done[p.id]){
-        const sm = await loadImage(svgUrl(stampSVG(catKey, p))), sw = W*0.46;
-        ctx.save(); ctx.translate(W/2, H/2); ctx.rotate(-8*Math.PI/180);
-        ctx.shadowColor = "rgba(29,53,87,.3)"; ctx.shadowBlur = 16; ctx.shadowOffsetY = 6;
-        ctx.drawImage(sm, -sw/2, -sw/2, sw, sw); ctx.restore();
-      }
-      const blob = await new Promise((ok, no) => cv.toBlob(b => b ? ok(b) : no(new Error("blob")), "image/png"));
-      const url = URL.createObjectURL(blob), a = document.createElement("a");
-      a.href = url; a.download = `熊熊集章_${p.name.replace(/[\\/:*?"<>|]/g,"")}.png`;
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(()=>URL.revokeObjectURL(url), 30000);
-      tip("圖片已下載");
+      const file = await buildShareFile(p, catKey);
+      if(job !== shareJob || st.open !== p.id) return;
+      st.shareFile = { id: p.id, file };
     }catch(e){
-      if(photoSrc && !/^(blob|data):/.test(photoSrc)){
-        window.open(photoSrc, "_blank", "noopener");
-        tip("這張圖片無法直接下載，已另開原圖，請長按（電腦按右鍵）另存圖片");
-      } else tip("圖片產生失敗，請再試一次");
-    }finally{ btn.disabled = false; }
+      if(job === shareJob) tip("圖片產生失敗，請重新開啟這個地點再試一次");
+    }
+    if(job === shareJob) dlBtnState();
+  }
+  function shareScene(){
+    const p = place(), s = st.shareFile;
+    if(!p || !st.done[p.id] || !s || s.id !== p.id) return;
+    const nav = shareNav();
+    const data = { files: [s.file], title: "熊熊島遊記", text: p.name };
+    let can = false;
+    try{ can = !!(nav.canShare && nav.canShare({ files: [s.file] })); }catch(e){}
+    if(can){
+      /* 按下按鈕的當下直接呼叫分享（不再等待產圖），手機才會開分享選單 */
+      nav.share(data).then(()=>tip("")).catch(e=>{
+        if(e && e.name === "AbortError") tip("已取消分享");
+        else tip("無法開啟分享選單（" + (e && e.name || "錯誤") + "），已改為下載圖片"), saveFile(s.file);
+      });
+    } else {
+      saveFile(s.file);
+      tip("這支手機不支援分享，已改為下載圖片");
+    }
+  }
+  function saveFile(file){
+    const url = URL.createObjectURL(file), a = document.createElement("a");
+    a.href = url; a.download = file.name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 30000);
   }
   async function changePic(file){
     const p = place(); if(!p || !file || !/^image\//.test(file.type)) return;
     const id = p.id, blob = await shrinkPic(file);
     if(st.pics[id]) URL.revokeObjectURL(st.pics[id]);
     st.pics[id] = URL.createObjectURL(blob);
-    if(st.open === id) showArt(p, st.openCat, st.open);
+    if(st.open === id){ showArt(p, st.openCat, st.open); prepareShare(); }
     try{ await picPut(id, blob); tip("已更換圖片（已保存在這支手機）"); }
     catch(e){ tip("已更換圖片（這個環境無法保存，重新開啟後會恢復原圖）"); }
   }
@@ -5117,7 +5184,7 @@ html,body{background:linear-gradient(180deg,var(--t1,#d7efff) 0%,var(--t2,#f4fbf
   document.addEventListener("keydown", e=>{ if(e.key==="Escape" && st.open) closeCheckin(); });
   $(".stampbtn").addEventListener("click", ()=>{
     const p = place(); if(!p || st.done[p.id] || stampLock(p)) return;
-    st.done[p.id] = TODAY; saveDone();
+    st.done[p.id] = nowStamp(); saveDone();
     const layer = $(".stamp-layer");
     layer.innerHTML = stampHTML(st.openCat,p);
     layer.firstElementChild.classList.add("slam");
@@ -5126,12 +5193,12 @@ html,body{background:linear-gradient(180deg,var(--t1,#d7efff) 0%,var(--t2,#f4fbf
     burst.classList.add("go");
     $(".stampbtn").disabled = true;
     setTimeout(()=>sc.classList.add("shake"), 240);
-    setTimeout(()=>{ sc.classList.remove("shake"); stampBtn(); render(); }, 900);
+    setTimeout(()=>{ sc.classList.remove("shake"); stampBtn(); render(); prepareShare(); }, 900);
   });
-  $("#btn-dl").addEventListener("click", downloadScene);
+  $("#btn-dl").addEventListener("click", shareScene);
   $("#btn-pic").addEventListener("click", ()=>$("#pic-file").click());
   $("#pic-file").addEventListener("change", e=>{ changePic(e.target.files[0]); e.target.value = ""; });
-  $(".reset").addEventListener("click", ()=>{ st.done = {}; saveDone(); $(".stamp-layer").innerHTML = ""; stampBtn(); render(); });
+  $(".reset").addEventListener("click", ()=>{ st.done = {}; saveDone(); $(".stamp-layer").innerHTML = ""; stampBtn(); render(); prepareShare(); });
   render();
   showScreen("menu");
   loadLive().then(()=>{ render(); if(st.screen === "menu") renderMenu(); });
