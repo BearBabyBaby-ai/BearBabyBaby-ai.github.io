@@ -5105,7 +5105,9 @@ html,body{background:linear-gradient(180deg,var(--t1,#d7efff) 0%,var(--t2,#f4fbf
     const ids = Object.keys(st.done), dates = ids.map(id=>st.done[id]).sort();
     $(".menu-count").textContent = ids.length;
     $(".menu-first").textContent = dates.length ? "第一次集章：" + dates[0] : "還沒有蓋章紀錄";
-    const dev = deviceId(); $(".menu-dev").textContent = dev ? "裝置代號：" + dev : "";
+    const dev = deviceId(); let ver = "";
+    try{ ver = (window.parent && typeof window.parent.appVersion === "function") ? window.parent.appVersion() : ""; }catch(e){}
+    $(".menu-dev").textContent = [dev ? "裝置代號：" + dev : "", ver ? "版本：" + ver : ""].filter(Boolean).join("　");
   }
   function showScreen(name, fromPop){
     if(!fromPop){
@@ -5422,6 +5424,9 @@ function loadGenerator() {
 }
 /* 集章卡的雲端儲存／載入網址（系統設定「集章雲端網址」），由集章卡頁面讀取 */
 function stampCloudUrl() { return CFG.stampCloudUrl || ''; }
+/* 程式版本（顯示在集章選單，方便確認手機是否已更新到最新版） */
+const APP_VERSION = '2026-10-15-v4';
+function appVersion() { return APP_VERSION; }
 /* 集章卡的蓋章距離（公尺，系統設定「集章偵測範圍」，預設 50） */
 function stampRange() { const n = Number(String(CFG.stampRangeM || '').replace(/[^\d.]/g, '')); return n > 0 ? n : 50; }
 /* 熊熊集章卡：第一次開啟時才把原始頁面載入 iframe */

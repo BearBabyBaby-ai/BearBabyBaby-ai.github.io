@@ -5,7 +5,7 @@
    ・外部程式庫（地圖、圖表）：存一份在手機，加快開啟速度
    只有更換圖示或 manifest.json 時，才需要把下面的 VERSION 改一個新名稱
    ===================================================================== */
-const VERSION = 'bearbear-2026-10-09-v0';
+const VERSION = 'bearbear-2026-10-15-v4';
 const SHELL_CACHE = `shell-${VERSION}`;
 const DATA_CACHE = 'sheet-data';
 const LIB_CACHE = 'libs';
@@ -32,10 +32,11 @@ function dataKey(url) {
   return u.toString();
 }
 
-async function networkFirst(request, cacheName, key) {
+async function networkFirst(request, cacheName, key, fresh) {
   const cache = await caches.open(cacheName);
   try {
-    const response = await fetch(request);
+    /* fresh：畫面（index.html）一律跳過瀏覽器快取，確保 GitHub 上傳新版後馬上拿到 */
+    const response = fresh ? await fetch(request.url, { cache: 'no-store', credentials: 'same-origin' }) : await fetch(request);
     if (response && response.ok) cache.put(key || request, response.clone());
     return response;
   } catch (err) {
@@ -62,7 +63,7 @@ self.addEventListener('fetch', event => {
   /* 本站檔案 */
   if (url.origin === self.location.origin) {
     if (request.mode === 'navigate' || url.pathname.endsWith('/') || url.pathname.endsWith('.html')) {
-      event.respondWith(networkFirst(request, SHELL_CACHE, './index.html'));
+      event.respondWith(networkFirst(request, SHELL_CACHE, './index.html', true));
     } else {
       event.respondWith(networkFirst(request, SHELL_CACHE));
     }
