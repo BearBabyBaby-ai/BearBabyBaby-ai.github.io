@@ -5303,7 +5303,7 @@ const HUB_ID = '1LOr4_3ugTHvTIi4UIfgVz2atVFh2K32zh7YKrrHxTwk';
 const HUB_SHEETS = { settings: { gid: '0', sheet: '系統設定' }, notices: { gid: '101', sheet: '公告' }, links: { gid: '102', sheet: '快速連結' } };
 /* 各工作表的 gid（gid 失效時會改用工作表名稱讀取） */
 const HUB_GIDS = {
-  food: '1582663006', spot: '2085392869', temple: '2137991614', shop: '1777099957',
+  food: '1582663006', spot: '2085392869', temple: '2137991614', shop: '1777099957', port: '777001',
   special: '2116605762', activity: '1977832611', tide: '1122135459', forecast: '776158339'
 };
 const CFG = {
@@ -5425,7 +5425,7 @@ function loadGenerator() {
 /* 集章卡的雲端儲存／載入網址（系統設定「集章雲端網址」），由集章卡頁面讀取 */
 function stampCloudUrl() { return CFG.stampCloudUrl || ''; }
 /* 程式版本（顯示在集章選單，方便確認手機是否已更新到最新版） */
-const APP_VERSION = '2026-10-15-v4';
+const APP_VERSION = '2026-10-16-v0';
 function appVersion() { return APP_VERSION; }
 /* 集章卡的蓋章距離（公尺，系統設定「集章偵測範圍」，預設 50） */
 function stampRange() { const n = Number(String(CFG.stampRangeM || '').replace(/[^\d.]/g, '')); return n > 0 ? n : 50; }
@@ -5468,7 +5468,12 @@ const sheetConfigs = [
   { key: '美食清單', gid: HUB_GIDS.food, type: '美食', nameField: '名稱', glyph: '食', color: '#f97316' },
   { key: '景點', gid: HUB_GIDS.spot, type: '景點', nameField: '景點名稱', glyph: '景', color: '#0284c7' },
   { key: '廟宇', gid: HUB_GIDS.temple, type: '廟宇', nameField: '廟宇名稱', glyph: '廟', color: '#a855f7' },
-  { key: '其他店家', gid: HUB_GIDS.shop, type: '其他店家', nameField: '名稱', glyph: '店', color: '#16a34a' }
+  { key: '其他店家', gid: HUB_GIDS.shop, type: '其他店家', nameField: '名稱', glyph: '店', color: '#16a34a' },
+  /* 工作表「港口、遊客中心」：主類別「交通設施」為港口，其餘（遊客中心、旅遊資訊站、借問站）為遊客中心；首頁統計不列入 */
+  { key: '港口、遊客中心', gid: HUB_GIDS.port, type: '港口', nameField: '景點名稱', glyph: '港', color: '#0e7490', home: false,
+    match: row => clean(row['主類別']) === '交通設施' },
+  { key: '港口、遊客中心', gid: HUB_GIDS.port, type: '遊客中心', nameField: '景點名稱', glyph: '遊', color: '#e11d48', home: false,
+    match: row => clean(row['主類別']) !== '交通設施' }
 ];
 const regionOrder = ['馬公市', '湖西鄉', '白沙鄉', '西嶼鄉', '望安鄉', '七美鄉'];
 const typeGlyph = {}, typeColor = {};
@@ -5518,6 +5523,7 @@ function detailPairs(d) {
   if (d.type === '美食') return [['區域', area], ['類別', [d.mainCategory, d.category].filter(Boolean).join('・')], ['餐食／服務', d.service], ['推薦', d.recommendation], ['地址', d.address], ['電話', d.phone], ['營業時間', d.hours]];
   if (d.type === '景點') return [['區域', area], ['分類', [d.mainCategory, d.category].filter(Boolean).join('・')], ['地址', d.address]];
   if (d.type === '廟宇') return [['區域', area], ['主祀', d.deity], ['地址', d.address], ['電話', d.phone]];
+  if (d.type === '港口' || d.type === '遊客中心') return [['區域', area], ['類別', d.category], ['地址', d.address], ['說明', d.desc], ['傳說', d.legend]];
   return [['區域', area], ['類別', d.category], ['地址', d.address], ['電話', d.phone]];
 }
 function imageUrl(value) {
@@ -5746,6 +5752,7 @@ function setActiveType(type) {
 }
 
 function normalizeSheetRow(row, config) {
+  if (config.match && !config.match(row)) return null;
   const val = key => clean(row[key]);
   const pick = (...keys) => { for (const key of keys) { const value = val(key); if (value) return value; } return ''; };
   const lat = Number(pick('Latitude', 'latitude', '緯度').replace(/,/g, ''));
@@ -5765,7 +5772,8 @@ function normalizeSheetRow(row, config) {
     const lantern = { theme: byPrefix('元宵主題'), feature: byPrefix('元宵特色'), dates: byPrefix('元宵活動日期'), time: fmtTime(byPrefix('元宵活動時間')), content: byPrefix('元宵活動內容'), gov: byPrefix('參加政府單位活動') };
     if (Object.values(lantern).some(Boolean)) d.lantern = lantern;
   }
-  d.searchText = [d.name, d.region, d.village, d.mainCategory, d.category, d.service, d.recommendation, d.deity, d.address, d.hours, d.type].join(' ').toLowerCase();
+  if (config.match) { d.desc = pick('簡易說明'); d.legend = pick('傳說'); }   /* 港口、遊客中心的說明與傳說 */
+  d.searchText = [d.name, d.region, d.village, d.mainCategory, d.category, d.service, d.recommendation, d.deity, d.address, d.hours, d.type, d.desc || ''].join(' ').toLowerCase();
   return d;
 }
 /* 讀取單一工作表：先用 gid 匯出 CSV；gid 失效時改用「工作表名稱」讀取 */
@@ -5796,7 +5804,7 @@ async function loadLiveSheet(config) {
 }
 async function loadData() {
   const results = await Promise.allSettled(sheetConfigs.map(loadLiveSheet));
-  const failed = results.map((r, i) => r.status === 'rejected' ? sheetConfigs[i].key : '').filter(Boolean);
+  const failed = [...new Set(results.map((r, i) => r.status === 'rejected' ? sheetConfigs[i].key : '').filter(Boolean))];
   const sets = results.filter(r => r.status === 'fulfilled').map(r => r.value);
   mapDataLoaded = true;
   if (!sets.length) { resultCount.textContent = '資料讀取失敗'; regionCards.innerHTML = '<div class="empty">請確認來源試算表可讀取後重新整理</div>'; Home.renderPlaces(true); return; }
@@ -7296,7 +7304,7 @@ const Home = (() => {
   function renderPlaces(failed = false) {
     const counts = {};
     allData.forEach(d => { counts[d.type] = (counts[d.type] || 0) + 1; });
-    $('homeTypes').innerHTML = sheetConfigs.map(s => `<button type="button" class="h-type" data-type="${esc(s.type)}" style="border-top:3px solid ${s.color}">${esc(s.type)}<small style="color:${s.color}">${failed ? '—' : (mapDataLoaded ? `${counts[s.type] || 0} 筆` : '讀取中')}</small></button>`).join('');
+    $('homeTypes').innerHTML = sheetConfigs.filter(s => s.home !== false).map(s => `<button type="button" class="h-type" data-type="${esc(s.type)}" style="border-top:3px solid ${s.color}">${esc(s.type)}<small style="color:${s.color}">${failed ? '—' : (mapDataLoaded ? `${counts[s.type] || 0} 筆` : '讀取中')}</small></button>`).join('');
   }
   function renderTide(failed = false) {
     const box = $('homeTide');
