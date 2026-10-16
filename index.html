@@ -2070,7 +2070,6 @@ const QUICK_KEYWORDS = [
         "菜園",
         "光華",
         "西文澳",
-        "西文",
         "虎井",
         "桶盤"
       ]
@@ -3558,6 +3557,20 @@ async function executeGlobalSearch(presetName = '') {
   if (!kw) {
     setStatus('⚠️ 請輸入搜尋關鍵字（例如：湖西 山水 赤崁 美食 景點，或點選快速關鍵字）。', 'error');
     if (!document.getElementById('sourceSelect').value && resultsShell) resultsShell.style.display = 'none';
+    return;
+  }
+  /* 已選「資料類型」與「區域」時：關鍵字只在目前的下拉篩選（資料類型、區域、分類、細分類）結果中搜尋，不跨區 */
+  const dropSource = document.getElementById('sourceSelect').value;
+  const dropRegion = document.getElementById('regionSelect').value;
+  if (!presetName && !isQuickAll && dropSource && dropRegion && allData.length) {
+    isSearchMode = false;
+    currentSearchKeyword = '';
+    setActiveQuickChip('');
+    await Promise.allSettled(ALL_SHEETS.map(sheetName => parseSheetRaw(sheetName)));
+    if (requestId !== latestGlobalSearchId || isSearchMode
+      || document.getElementById('sourceSelect').value !== dropSource
+      || normalizeSearchText(input.value) !== normalizeSearchText(kw)) return;
+    displayResults();
     return;
   }
   ++latestSheetLoadId;
@@ -5425,7 +5438,7 @@ function loadGenerator() {
 /* 集章卡的雲端儲存／載入網址（系統設定「集章雲端網址」），由集章卡頁面讀取 */
 function stampCloudUrl() { return CFG.stampCloudUrl || ''; }
 /* 程式版本（顯示在集章選單，方便確認手機是否已更新到最新版） */
-const APP_VERSION = '2026-10-16-v0';
+const APP_VERSION = '2026-10-16-v1';
 function appVersion() { return APP_VERSION; }
 /* 集章卡的蓋章距離（公尺，系統設定「集章偵測範圍」，預設 50） */
 function stampRange() { const n = Number(String(CFG.stampRangeM || '').replace(/[^\d.]/g, '')); return n > 0 ? n : 50; }
