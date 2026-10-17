@@ -1,0 +1,34 @@
+// Minimal local test DOM: executes game logic and event bindings without network.
+const fs=require('node:fs'),vm=require('node:vm');
+const decode=s=>String(s).replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&amp;/g,'&');
+class El{
+ constructor(tag='div',owner){this.tagName=tag.toUpperCase();this.ownerDocument=owner;this.childNodes=[];this.parentElement=null;this.attributes={};this.style={setProperty(k,v){this[k]=String(v)},getPropertyValue(k){return this[k]||''}};this.dataset={};this.listeners={};this.disabled=false;this.hidden=false;this.checked=false;this._value='';}
+ set id(v){this.attributes.id=String(v)}get id(){return this.attributes.id||''}
+ set className(v){this.attributes.class=String(v)}get className(){return this.attributes.class||''}
+ get classList(){const e=this;return {toggle(c,on){const a=e.className.split(' ').filter(Boolean),has=a.includes(c);if(on===undefined)on=!has;e.className=on?[...new Set([...a,c])].join(' '):a.filter(x=>x!==c).join(' ');},contains(c){return e.className.split(' ').includes(c)},add(c){this.toggle(c,true)},remove(c){this.toggle(c,false)}}}
+ get children(){return this.childNodes.filter(x=>typeof x!=='string')}
+ get firstChild(){return this.childNodes[0]}
+ set textContent(s){this.childNodes=[String(s)]}get textContent(){return this.childNodes.map(c=>typeof c==='string'?c:c.textContent).join('')}
+ set innerHTML(s){this.childNodes=[];parse(String(s),this)}
+ get innerHTML(){return this.childNodes.map(c=>typeof c==='string'?c:c.outerHTML).join('')}
+ get outerHTML(){const attrs={...this.attributes};if(this.style.display)attrs.style=(attrs.style||'')+';display:'+this.style.display;if(this.disabled)attrs.disabled='';if(this.checked)attrs.checked='';if(this.hidden)attrs.hidden='';if(this._value)attrs.value=this._value;return `<${this.tagName.toLowerCase()} ${Object.entries(attrs).map(([k,v])=>`${k}="${String(v).replace(/"/g,'&quot;')}"`).join(' ')}>${this.innerHTML}</${this.tagName.toLowerCase()}>`}
+ get value(){if(this.tagName==='SELECT'){const ops=this.querySelectorAll('option');return this._value||ops.find(o=>'selected'in o.attributes)?.value||ops[0]?.value||'';}return this._value||this.attributes.value||'';}set value(v){this._value=String(v)}
+ prepend(...args){for(let c of args.reverse()){if(typeof c==='string')this.childNodes.unshift(c);else{if(c.parentElement)c.remove();this.childNodes.unshift(c);c.parentElement=this;}}}
+ appendChild(c){if(c.parentElement)c.remove();this.childNodes.push(c);c.parentElement=this;return c}append(...args){for(let c of args){if(typeof c==='string')this.childNodes.push(c);else this.appendChild(c)}}replaceChildren(...a){this.childNodes=[];this.append(...a)}remove(){if(this.parentElement){this.parentElement.childNodes=this.parentElement.childNodes.filter(c=>c!==this);this.parentElement=null;}}
+ getAttribute(k){return this.attributes[k]??null}
+ setAttribute(k,v){this.attributes[k]=String(v);if(k==='style')for(const part of String(v).split(';')){const i=part.indexOf(':');if(i>0)this.style[part.slice(0,i).trim()]=part.slice(i+1).trim()}if(k==='checked')this.checked=true;if(k==='disabled')this.disabled=true;if(k==='hidden')this.hidden=true;if(k.startsWith('data-'))this.dataset[k.slice(5).replace(/-([a-z])/g,(_,c)=>c.toUpperCase())]=String(v)}
+ addEventListener(k,fn){(this.listeners[k]||=[]).push(fn)}dispatchEvent(ev){ev.target||=this;ev.currentTarget=this;for(const fn of this.listeners[ev.type]||[])fn(ev);if(typeof this['on'+ev.type]==='function')this['on'+ev.type](ev);}
+ focus(){this.ownerDocument.activeElement=this}select(){}
+ click(){if(!this.disabled)this.dispatchEvent({type:'click',target:this});}
+ matches(s){if(s.startsWith('#'))return this.id===s.slice(1);if(s.startsWith('.'))return this.className.split(' ').includes(s.slice(1));if(s.startsWith('[')){const m=s.match(/^\[([^=\]]+)(?:=["']?([^"'\]]+)["']?)?\]$/);return !!m&&m[1]in this.attributes&&(m[2]===undefined||this.attributes[m[1]]===m[2])}return this.tagName.toLowerCase()===s.toLowerCase()}
+ querySelectorAll(s){const a=s.trim().split(/\s+/),last=a.pop(),res=[];const visit=e=>{for(const c of e.children){if(c.matches(last)){let cur=c.parentElement,idx=a.length-1;while(cur&&idx>=0){if(cur.matches(a[idx]))idx--;cur=cur.parentElement;}if(idx<0)res.push(c);}visit(c)}};visit(this);return res;}
+ querySelector(s){return this.querySelectorAll(s)[0]||null}closest(s){let e=this;while(e){if(e.matches(s))return e;e=e.parentElement}return null}
+}
+function parse(html,parent){const stack=[parent],re=/<\/?[^>]+>|[^<]+/g;let m;while((m=re.exec(html))){const t=m[0];if(t.startsWith('<!'))continue;if(t.startsWith('</')){if(stack.length>1)stack.pop();continue;}if(t.startsWith('<')){const name=t.match(/^<([^\s/>]+)/)?.[1];if(!name)continue;const el=new El(name,parent.ownerDocument);for(const a of t.slice(name.length+1,-1).matchAll(/([^\s=/>]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g))el.setAttribute(a[1],decode(a[2]??a[3]??a[4]??''));stack.at(-1).appendChild(el);if(!/^(area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)$/i.test(name)&&!t.endsWith('/>'))stack.push(el);}else stack.at(-1).append(decode(t));}}
+class Doc extends El{constructor(html){super('document');this.ownerDocument=this;this.ready=[];parse(html,this);this.activeElement=null;}get body(){return this.querySelector('body')}getElementById(id){return this.querySelector('#'+id)}createElement(tag){return new El(tag,this)}addEventListener(type,fn){if(type==='DOMContentLoaded')this.ready.push(fn);else super.addEventListener(type,fn)}}
+const path=require('node:path');const entry=path.resolve(__dirname,'../index.html');const html=fs.readFileSync(entry,'utf8');const scripts=[...html.matchAll(/<script(?: src="([^"]+)")?>([\s\S]*?)<\/script>/g)].map(m=>m[1]?fs.readFileSync(path.resolve(path.dirname(entry),m[1]),'utf8'):m[2]);
+const document=new Doc(html.replace(/<script[^>]*>[\s\S]*?<\/script>/g,'').replace(/<style>[\s\S]*?<\/style>/g,''));
+const cache=new Map();const localStorage={setItem:(k,v)=>cache.set(k,v),getItem:k=>cache.get(k)||null,removeItem:k=>cache.delete(k)};
+let timerID=0;const timers=new Map();const context={document,localStorage,console,confirm:()=>true,prompt:()=>null,alert:()=>{},setInterval:fn=>{timers.set(++timerID,fn);return timerID},clearInterval:k=>timers.delete(k),setTimeout:()=>++timerID,clearTimeout:()=>{},Blob,URL,crypto:require('node:crypto').webcrypto,location:{protocol:'file:',reload(){}},navigator:{},addEventListener(){},FileReader:class{}};context.window=context;context.globalThis=context;vm.createContext(context);
+for(const script of scripts)vm.runInContext(script,context,{timeout:10000});for(const fn of document.ready)fn();
+module.exports={context,vm,document,cache,timers,run:code=>vm.runInContext(code,context,{timeout:20000}),html};

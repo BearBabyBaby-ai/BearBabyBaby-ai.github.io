@@ -1,0 +1,26 @@
+{
+  "id": "./",
+  "name": "熊寶編年史・戰況重製版",
+  "short_name": "熊寶冒險",
+  "lang": "zh-TW",
+  "description": "熊寶與九十位守護夥伴的海島冒險",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#eff5f4",
+  "theme_color": "#175b85",
+  "icons": [
+    {
+      "src": "./assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

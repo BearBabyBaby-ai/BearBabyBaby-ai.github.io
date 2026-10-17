@@ -60,6 +60,9 @@ self.addEventListener('fetch', event => {
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
 
+  /* 熊寶編年史（/bear-game/）有自己的 service worker，這裡不接手，避免蓋掉綜合系統的離線版 index.html */
+  if (url.origin === self.location.origin && (url.pathname === '/bear-game' || url.pathname.startsWith('/bear-game/'))) return;
+
   /* 本站檔案 */
   if (url.origin === self.location.origin) {
     if (request.mode === 'navigate' || url.pathname.endsWith('/') || url.pathname.endsWith('.html')) {
