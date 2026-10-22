@@ -60,6 +60,9 @@ self.addEventListener('fetch', event => {
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
 
+  /* 熊寶系統（bearbao/）有自己的 service worker，這裡不處理 */
+  if (url.origin === self.location.origin && url.pathname.includes('/bearbao/')) return;
+
   /* 本站檔案 */
   if (url.origin === self.location.origin) {
     if (request.mode === 'navigate' || url.pathname.endsWith('/') || url.pathname.endsWith('.html')) {
