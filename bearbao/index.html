@@ -4079,7 +4079,7 @@ const Finance = (() => {
         ${field({ name: 'token', label: '連線密碼（試算表「設定」工作表的 App連線密碼）', type: 'password', value: Fin.token(), full: true })}
       </form>
       <div class="xb-form-acts"><button type="button" class="xb-btn pri" id="finConnSave">連線測試並儲存</button></div>
-      <ol><li>開啟「財務管理」試算表 → 擴充功能 → Apps Script，貼上「財務管理後端.gs」</li><li>服務「＋」加入 Drive API，先執行一次 setup()</li><li>部署 → 網頁應用程式（執行身分：我／存取：所有人）→ 複製網址貼到上面</li></ol>`;
+      <ol><li>開啟「財務管理」試算表 → 擴充功能 → Apps Script，貼上「財務管理後端.gs」</li><li>服務「＋」加入 Drive API</li><li>部署 → 網頁應用程式（執行身分：我／存取：所有人）→ 複製網址貼到上面</li></ol>`;
   }
   function invStatusTag(s) {
     const st = s['兌獎狀態'] || '未開獎';
@@ -4203,7 +4203,7 @@ const Finance = (() => {
     const diff = key => { if (!cur || !prev) return ''; const d = Math.round((numOf(cur[key]) - numOf(prev[key])) * 10) / 10; return d > 0 ? `▲ ${d}` : d < 0 ? `▼ ${-d}` : '持平'; };
     const tiles = [['92無鉛', '#16a34a'], ['95無鉛', '#2563eb'], ['98無鉛', '#7c3aed'], ['超級柴油', '#b45309']];
     return `<div class="xb-row" style="margin-bottom:12px"><span class="xb-note" style="margin:0">中油自營站參考牌價（元／公升）${cur ? `・${esc(cur['生效日期'])} 起` : ''}</span><button type="button" class="xb-btn pri" data-fin-act="oil" style="margin-left:auto">🔄 更新油價</button></div>
-      ${cur ? `<div class="xb-oil">${tiles.map(([k, c]) => `<div style="--c:${c}"><small>${k}</small><b>${esc(cur[k])}</b><em>${diff(k)}</em></div>`).join('')}</div>` : '<div class="xb-empty">尚未抓取油價，請按「更新油價」（每天早上 7 點也會自動更新）</div>'}
+      ${cur ? `<div class="xb-oil">${tiles.map(([k, c]) => `<div style="--c:${c}"><small>${k}</small><b>${esc(cur[k])}</b><em>${diff(k)}</em></div>`).join('')}</div>` : '<div class="xb-empty">尚未抓取油價，請按「更新油價」（每天第一次打開 App 也會自動更新）</div>'}
       ${list.length > 1 ? `<div class="xb-card xb-wrap" style="margin-top:14px"><h3>📜 油價歷史</h3><table class="xb-table"><thead><tr><th>生效日期</th><th>92</th><th>95</th><th>98</th><th>柴油</th></tr></thead><tbody>${list.slice(0, 30).map(o => `<tr><td>${esc(o['生效日期'])}</td><td>${esc(o['92無鉛'])}</td><td>${esc(o['95無鉛'])}</td><td>${esc(o['98無鉛'])}</td><td>${esc(o['超級柴油'])}</td></tr>`).join('')}</tbody></table></div>` : ''}`;
   }
 
