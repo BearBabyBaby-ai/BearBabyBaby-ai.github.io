@@ -1649,15 +1649,16 @@ function imageUrl(value) {
 /* 熊寶分類圖：資料沒有圖資來源時使用（先比對類別，再比對名稱，最後依工作表） */
 const DRIVE_PIC = id => `https://drive.google.com/thumbnail?id=${id}&sz=w480`;
 const CAT_PICS = {
-  '7-11': 'icons/cat/711.jpg',
-  '全家': 'icons/cat/familymart.jpg',
+  '7-11': DRIVE_PIC('1autcCRLT40IEx_0HQHGpCLjWHsUR-0ev'),
+  '全家': DRIVE_PIC('18ULawdcvSKQBroNEAYXjUmabGwlK43FZ'),
   '全聯': DRIVE_PIC('1NUhkzgz4_QoubwnDI3v6bPKTGq9Q7k-E'),
-  '加油站': 'icons/cat/gas.jpg',
+  '加油站': DRIVE_PIC('1MCkbJaxehG9F6Ss-3TxMh6RVQdPIU3xz'),
   '修理機車': DRIVE_PIC('1m5JKK6-gsxRlVY39TXeRJ9C9JHLb6NFr'),
   '公廁': DRIVE_PIC('1rKPGckG9fmWiSPdVG4k2W3HOWESUCZgI'),
   '廟宇': DRIVE_PIC('1xLSy7wSmKTtxaOj_KkNoA_VNtwkKQjTe'),
   '遊客中心': DRIVE_PIC('1Y2zzTiQZh8oUHKk34I55tN2UwgrVEWuv'),
-  '美食': 'icons/cat/food.jpg'
+  '美食': DRIVE_PIC('19NWp6LPKAQq8SifxSeRZN-kEao2qFOlB'),
+  '景點': DRIVE_PIC('1xT-UiHHrjDI5rYkZDICsLfzUO2OYPHuR')
 };
 const CAT_RULES = [
   ['7-11', /7-?11|7-?eleven|統一超商/i], ['全家', /全家|familymart/i], ['全聯', /全聯|px ?mart/i],
