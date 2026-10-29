@@ -680,6 +680,33 @@
     .ln-items{display:flex;flex-wrap:wrap;gap:5px}
     .ln-items span{border:1px solid #f3dcc4;background:#fffaf5;border-radius:8px;padding:4px 8px;font-size:.78rem;color:#4a3426;line-height:1.4}
     .ln-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto;padding-top:4px}
+    .ln-card{cursor:pointer}
+    .ln-card:hover{border-color:#efc9a4;box-shadow:0 10px 24px rgba(127,29,29,.14)}
+    .ln-detail{position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(69,20,10,.5);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+    .ln-detail[hidden]{display:none}
+    .ln-detail-box{position:relative;width:min(560px,100%);max-height:calc(100vh - 36px);max-height:calc(100dvh - 36px);overflow:auto;background:linear-gradient(180deg,#fff1dc 0,#fffaf3 150px);color:#3b2418;border-radius:28px;border-top:6px solid #fbbf24;padding:26px 28px 24px;box-shadow:0 24px 60px rgba(127,29,29,.35)}
+    .ln-d-close{position:absolute;top:18px;right:18px;width:46px;height:46px;border:0;border-radius:50%;background:#fde7c7;color:#9a3412;font-size:1.4rem;font-weight:700;line-height:1;cursor:pointer}
+    .ln-d-head{display:flex;align-items:center;gap:10px;padding-right:56px}
+    .ln-d-tag{border:1.5px solid #b91c1c;background:#b91c1c;border-radius:999px;padding:4px 12px;font-size:.86rem;font-weight:700;color:#fff}
+    .ln-d-sub{font-size:.84rem;font-weight:800;letter-spacing:.14em;color:#d97706}
+    .ln-d-name{margin:16px 0 10px;font-size:1.9rem;line-height:1.25;font-weight:900;color:#b91c1c}
+    .ln-d-desc{margin:0 0 14px;font-size:.98rem;line-height:1.85;color:#6b4f3a;background:#fff7ed;border-left:4px solid #f59e0b;border-radius:8px;padding:10px 12px}
+    .ln-d-rows{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:11px 14px;margin:6px 0 20px;font-size:.95rem;line-height:1.6}
+    .ln-d-rows dt{color:#b45309;font-weight:700}
+    .ln-d-rows dd{margin:0;color:#3b2418;word-break:break-word}
+    .ln-d-rows dd .ln-d-item{display:block}
+    .ln-d-btns{display:flex;gap:10px}
+    .ln-d-btns .ev-btn{flex:1;display:inline-flex;align-items:center;justify-content:center;min-height:50px;border-radius:12px;font-size:.98rem;font-weight:800;letter-spacing:.06em;text-decoration:none}
+    .ln-d-btns .ln-d-go{background:linear-gradient(120deg,#b91c1c,#d97706);border:0;color:#fff}
+    .ln-d-btns .ln-d-nav{flex:0 1 auto;padding:0 20px;background:#fef3c7;border:1px solid #f59e0b;color:#92400e}
+    @media(max-width:820px){
+      .ln-detail{padding:12px}
+      .ln-detail-box{padding:22px 20px 20px;border-radius:24px}
+      .ln-d-name{font-size:1.6rem}
+      .ln-d-rows{font-size:.92rem;gap:10px 12px}
+      .ln-d-btns .ln-d-go{display:none}
+      .ln-d-btns .ln-d-nav{flex:1}
+    }
     @media(max-width:820px){
       .ln-hero{padding:15px}
       .ev-mode-btn{flex:1;padding:10px 6px;font-size:.86rem}
@@ -1027,6 +1054,12 @@
   </main>
 </div>
 
+<div id="lnDetail" class="ln-detail" hidden>
+  <div class="ln-detail-box" role="dialog" aria-modal="true" aria-labelledby="lnDetailName">
+    <button type="button" class="ln-d-close" data-ln-close aria-label="關閉">✕</button>
+    <div id="lnDetailBody"></div>
+  </div>
+</div>
 <div id="imageModal" class="image-modal">
   <span class="image-modal-close" id="imageModalClose">&times;</span>
   <img class="image-modal-content" id="imageModalImg" alt="預覽圖片">
@@ -5438,7 +5471,7 @@ function loadGenerator() {
 /* 集章卡的雲端儲存／載入網址（系統設定「集章雲端網址」），由集章卡頁面讀取 */
 function stampCloudUrl() { return CFG.stampCloudUrl || ''; }
 /* 程式版本（顯示在集章選單，方便確認手機是否已更新到最新版） */
-const APP_VERSION = '2026-10-16-v1';
+const APP_VERSION = '2026-10-29-v1';
 function appVersion() { return APP_VERSION; }
 /* 集章卡的蓋章距離（公尺，系統設定「集章偵測範圍」，預設 50） */
 function stampRange() { const n = Number(String(CFG.stampRangeM || '').replace(/[^\d.]/g, '')); return n > 0 ? n : 50; }
@@ -5784,6 +5817,7 @@ function normalizeSheetRow(row, config) {
     const byPrefix = prefix => { const key = Object.keys(row).find(k => k.startsWith(prefix)); return key ? clean(row[key]) : ''; };
     const lantern = { theme: byPrefix('元宵主題'), feature: byPrefix('元宵特色'), dates: byPrefix('元宵活動日期'), time: fmtTime(byPrefix('元宵活動時間')), content: byPrefix('元宵活動內容'), gov: byPrefix('參加政府單位活動') };
     if (Object.values(lantern).some(Boolean)) d.lantern = lantern;
+    d.history = byPrefix('廟宇史蹟'); d.legend = pick('傳說');
   }
   if (config.match) { d.desc = pick('簡易說明'); d.legend = pick('傳說'); }   /* 港口、遊客中心的說明與傳說 */
   d.searchText = [d.name, d.region, d.village, d.mainCategory, d.category, d.service, d.recommendation, d.deity, d.address, d.hours, d.type, d.desc || ''].join(' ').toLowerCase();
@@ -7072,7 +7106,7 @@ const Lantern = (() => {
     const L = d.lantern, g = govFlags(L.gov), src = imageUrl(d.image);
     const pic = src ? `<img class="ln-pic js-zoom-any" src="${esc(src)}" data-full="${esc(src)}" alt="${esc(d.name)}" loading="lazy" referrerpolicy="no-referrer">` : '<span class="ln-pic" aria-hidden="true">🏮</span>';
     const items = L.content ? L.content.split(/[│|｜]/).map(clean).filter(Boolean) : [];
-    return `<article class="ln-card"><div class="ln-top">${pic}<div><h3 class="ln-theme">${esc(L.theme || '元宵活動')}</h3><span class="ln-temple">${esc(d.name)}</span><span class="ln-meta">${esc([d.region, d.village].filter(Boolean).join('・'))}${d.deity ? `・主祀 ${esc(d.deity)}` : ''}</span><div class="ln-badges">${isToday(d) ? '<span class="ln-badge now">今天有活動</span>' : ''}${g.nsa ? '<span class="ln-badge nsa">澎管處活動</span>' : ''}${g.cul ? '<span class="ln-badge cul">文化局活動</span>' : ''}</div></div></div>
+    return `<article class="ln-card" data-ln-key="${esc(keyOf(d))}"><div class="ln-top">${pic}<div><h3 class="ln-theme">${esc(L.theme || '元宵活動')}</h3><span class="ln-temple">${esc(d.name)}</span><span class="ln-meta">${esc([d.region, d.village].filter(Boolean).join('・'))}${d.deity ? `・主祀 ${esc(d.deity)}` : ''}</span><div class="ln-badges">${isToday(d) ? '<span class="ln-badge now">今天有活動</span>' : ''}${g.nsa ? '<span class="ln-badge nsa">澎管處活動</span>' : ''}${g.cul ? '<span class="ln-badge cul">文化局活動</span>' : ''}</div></div></div>
       <div class="ln-body">
         ${L.dates || L.time ? `<div class="ln-when">${L.dates ? `<span>📅 ${esc(shortRange(L.dates))}</span>` : ''}${L.time ? `<span>🕘 ${esc(L.time)}</span>` : ''}</div>` : ''}
         ${L.feature ? `<p class="ln-feature">✨ ${richText(L.feature)}</p>` : ''}
@@ -7223,8 +7257,47 @@ Output the reconstructed image ONLY. No textual explanation required.
   dateSel.addEventListener('change', render);
   $('lnSort').addEventListener('change', render);
   $('lnGov').addEventListener('click', e => { const c = e.target.closest('[data-ln-gov]'); if (c) { gov = c.dataset.lnGov; render(); } });
-  $('evLanternMode').addEventListener('click', e => { const b = e.target.closest('[data-ln-export]'); if (b && !b.disabled) exportTxt(b.dataset.lnExport); });
-  return { render, setMode, get mode() { return mode; } };
+  $('evLanternMode').addEventListener('click', e => {
+    const b = e.target.closest('[data-ln-export]'); if (b && !b.disabled) { exportTxt(b.dataset.lnExport); return; }
+    const c = e.target.closest('.ln-card[data-ln-key]');
+    if (c && !e.target.closest('button, a, .js-zoom-any')) openDetail(c.dataset.lnKey);
+  });
+
+  /* ===== 點擊廟宇卡片：顯示詳細資訊（比照熊熊澎湖之旅的地點資訊卡） ===== */
+  const detail = $('lnDetail');
+  function openDetail(key) {
+    const d = shown.find(x => keyOf(x) === key) || temples().find(x => keyOf(x) === key);
+    if (!d) return;
+    const L = d.lantern || {};
+    const items = L.content ? L.content.split(/[│|｜]/).map(clean).filter(Boolean) : [];
+    const rows = [
+      ['所在地', esc([d.region, d.village].filter(Boolean).join(' · '))],
+      ['地址', esc(d.address)],
+      ['電話', esc(d.phone)],
+      ['主祀', esc(d.deity)],
+      ['元宵主題', esc(L.theme)],
+      ['元宵特色', L.feature ? richText(L.feature) : ''],
+      ['活動日期', esc(L.dates)],
+      ['活動時間', esc(L.time)],
+      ['活動內容', items.map(t => `<span class="ln-d-item">${richText(t)}</span>`).join('')],
+      ['參加政府單位活動', esc(L.gov)],
+      ['傳說', esc(d.legend)],
+      ['座標', `${d.lat}, ${d.lng}`]
+    ].filter(([, v]) => v);
+    $('lnDetailBody').innerHTML = `<div class="ln-d-head"><span class="ln-d-tag">廟宇</span><span class="ln-d-sub">澎湖元宵</span></div>
+      <h3 class="ln-d-name" id="lnDetailName">${esc(d.name)}</h3>
+      ${d.history ? `<p class="ln-d-desc">${esc(d.history)}</p>` : ''}
+      <dl class="ln-d-rows">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>
+      <div class="ln-d-btns"><button type="button" class="ev-btn ln-d-go" data-place-key="${esc(keyOf(d))}">地圖定位</button><a class="ev-btn nav ln-d-nav" href="${esc(getTargetUrl(d))}" target="_blank" rel="noopener noreferrer">Google 導航 ↗</a></div>`;
+    detail.hidden = false;
+    detail.querySelector('.ln-detail-box').scrollTop = 0;
+  }
+  function closeDetail() { detail.hidden = true; }
+  detail.addEventListener('click', e => {
+    if (e.target === detail || e.target.closest('[data-ln-close]') || e.target.closest('[data-place-key]')) closeDetail();
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !detail.hidden) closeDetail(); });
+  return { render, setMode, openDetail, closeDetail, get mode() { return mode; } };
 })();
 
 /* =====================================================================
@@ -7466,9 +7539,19 @@ const Home = (() => {
       else if (!open && modalPushed) { modalPushed = false; skipPop = true; try { history.back(); } catch (_) { skipPop = false; } }
     }).observe(modal, { attributes: true, attributeFilter: ['class'] });
   }
+  const lnDetail = document.getElementById('lnDetail');
+  let lnPushed = false;
+  if (lnDetail) {
+    new MutationObserver(() => {
+      const open = !lnDetail.hidden;
+      if (open && !lnPushed) { lnPushed = true; try { history.pushState({ lnDetail: 1 }, '', location.hash); } catch (_) {} }
+      else if (!open && lnPushed) { lnPushed = false; skipPop = true; try { history.back(); } catch (_) { skipPop = false; } }
+    }).observe(lnDetail, { attributes: true, attributeFilter: ['hidden'] });
+  }
   window.addEventListener('popstate', () => {
     if (skipPop) { skipPop = false; return; }
     if (modalPushed) { modalPushed = false; closeImageModal(); return; }
+    if (lnPushed) { lnPushed = false; Lantern.closeDetail(); return; }
     const view = (location.hash || '').replace('#', '') || 'home';
     if (view === currentView) return;
     restoring = true;
