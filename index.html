@@ -682,7 +682,7 @@
     .ln-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto;padding-top:4px}
     .ln-card{cursor:pointer}
     .ln-card:hover{border-color:#efc9a4;box-shadow:0 10px 24px rgba(127,29,29,.14)}
-    .ln-detail{position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(69,20,10,.62)}
+    .ln-detail{position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(69,20,10,.5);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
     .ln-detail[hidden]{display:none}
     .ln-detail-box{position:relative;width:min(560px,100%);max-height:calc(100vh - 36px);max-height:calc(100dvh - 36px);overflow:auto;background:linear-gradient(180deg,#fff1dc 0,#fffaf3 150px);color:#3b2418;border-radius:28px;border-top:6px solid #fbbf24;padding:26px 28px 24px;box-shadow:0 24px 60px rgba(127,29,29,.35)}
     .ln-d-close{position:absolute;top:18px;right:18px;width:46px;height:46px;border:0;border-radius:50%;background:#fde7c7;color:#9a3412;font-size:1.4rem;font-weight:700;line-height:1;cursor:pointer}
@@ -4915,6 +4915,8 @@ html,body{background:linear-gradient(180deg,var(--t1,#d7efff) 0%,var(--t2,#f4fbf
     if(isBook){ stopMore(); $(".cards").innerHTML = bookHTML(); }
     else renderCards();
   }
+  /* App 本身才用返回紀錄；綜合系統被嵌入其他網頁（例如 Google 協作平台）時不使用 */
+  function appHist(){ try{ return window.parent === window.top; }catch(e){ return false; } }
   function openCheckin(id, catKey){
     st.open = id; st.openCat = catKey; st.openPlace = null;
     const p = place(), ci = $(".checkin");
@@ -4929,7 +4931,7 @@ html,body{background:linear-gradient(180deg,var(--t1,#d7efff) 0%,var(--t2,#f4fbf
     showDistance(p, id);
     stampBtn();
     ci.hidden = false; ci.scrollTop = 0;
-    if(!st.hist){ try{ history.pushState({ checkin: 1 }, ""); st.hist = true; }catch(e){} }   /* App：手機返回鍵先關閉打卡畫面 */
+    if(!st.hist && appHist()){ try{ history.pushState({ checkin: 1 }, ""); st.hist = true; }catch(e){} }   /* App：手機返回鍵先關閉打卡畫面 */
     try{ document.body.style.overflow = "hidden"; }catch(e){}
     $("#btn-back").focus();
   }
@@ -5157,7 +5159,7 @@ html,body{background:linear-gradient(180deg,var(--t1,#d7efff) 0%,var(--t2,#f4fbf
   }
   function showScreen(name, fromPop){
     if(!fromPop){
-      if(name === "list" && st.screen !== "list" && !st.listHist){ try{ history.pushState({ stampList: 1 }, ""); st.listHist = true; }catch(e){} }
+      if(name === "list" && st.screen !== "list" && !st.listHist && appHist()){ try{ history.pushState({ stampList: 1 }, ""); st.listHist = true; }catch(e){} }
       else if(name === "menu" && st.listHist){ st.listHist = false; st.skipPop = true; try{ history.back(); }catch(e){ st.skipPop = false; } }
     }
     st.screen = name;
@@ -5471,7 +5473,7 @@ function loadGenerator() {
 /* 集章卡的雲端儲存／載入網址（系統設定「集章雲端網址」），由集章卡頁面讀取 */
 function stampCloudUrl() { return CFG.stampCloudUrl || ''; }
 /* 程式版本（顯示在集章選單，方便確認手機是否已更新到最新版） */
-const APP_VERSION = '2026-10-29-v2';
+const APP_VERSION = '2026-10-29-v3';
 function appVersion() { return APP_VERSION; }
 /* 集章卡的蓋章距離（公尺，系統設定「集章偵測範圍」，預設 50） */
 function stampRange() { const n = Number(String(CFG.stampRangeM || '').replace(/[^\d.]/g, '')); return n > 0 ? n : 50; }
@@ -7518,6 +7520,8 @@ const Home = (() => {
 /* App（PWA／APK）：手機返回鍵回到上一頁（上一個分頁、關閉圖片預覽），在第一頁再按返回才離開 App */
 (function () {
   if (typeof showView !== 'function') return;
+  /* 被嵌入其他網頁（例如 Google 協作平台）時不處理返回鍵：在框架裡操作瀏覽紀錄會讓整個嵌入區塊變白 */
+  try { if (window.top !== window.self) return; } catch (_) { return; }
   const baseShowView = showView;
   let restoring = false, modalPushed = false, skipPop = false;
   showView = function (view) {
