@@ -5526,7 +5526,7 @@ function loadGenerator() {
 /* 集章卡的雲端儲存／載入網址（系統設定「集章雲端網址」），由集章卡頁面讀取 */
 function stampCloudUrl() { return CFG.stampCloudUrl || ''; }
 /* 程式版本（顯示在集章選單，方便確認手機是否已更新到最新版） */
-const APP_VERSION = '2026-11-01-v4';
+const APP_VERSION = '2026-11-01-v5';
 function appVersion() { return APP_VERSION; }
 /* 集章卡的蓋章距離（公尺，系統設定「集章偵測範圍」，預設 50） */
 function stampRange() { const n = Number(String(CFG.stampRangeM || '').replace(/[^\d.]/g, '')); return n > 0 ? n : 50; }
@@ -5716,11 +5716,12 @@ function pinIcon(d) {
   const color = colorOf(d);
   const deg = d.type === '測速執法' ? directionDeg(d.direction) : null;
   const arrow = deg === null ? '' : `<span class="pin-dir" style="--dir:${deg}deg;color:${color}" title="${esc(d.direction)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5 20 10.5H14.5V22.5H9.5V10.5H4Z"/></svg></span>`;
-  return L.divIcon({ className: '', html: `<div class="pin-wrap"><div class="map-pin" style="background:${color}"><span>${esc(glyphOf(d))}</span></div>${arrow}</div>`, iconSize: [30, 30], iconAnchor: [15, 30], popupAnchor: [0, -28] });
+  return L.divIcon({ className: '', html: `<div class="pin-wrap"><div class="map-pin" style="background:${color}"><span>${esc(glyphOf(d))}</span></div>${arrow}</div>`, iconSize: [30, 30], iconAnchor: [15 - (d.pinShift || 0), 30], popupAnchor: [d.pinShift || 0, -28] });
 }
 function buildMarker(d) {
   const m = L.marker([d.lat, d.lng], { icon: pinIcon(d), title: d.name });
-  m.bindTooltip(esc(d.name), { permanent: false, direction: 'top', offset: [0, -28], className: 'marker-label' });
+  m._pinShift = d.pinShift || 0; m._labelSkip = Boolean(d.labelSkip);   /* 同座標的第二支起不顯示常駐名稱，避免標籤疊在一起 */
+  m.bindTooltip(esc(d.name), { permanent: false, direction: 'top', offset: [m._pinShift, -28], className: 'marker-label' });
   m.bindPopup(() => popup(d), { maxWidth: 300 });
   m.on('popupopen', () => renderNearby(d));
   return m;
@@ -5741,10 +5742,10 @@ function refreshLabels() {
   markerMap.forEach(marker => {
     const tip = marker.getTooltip();
     if (!tip) return;
-    const want = show && count < 120 && bounds.contains(marker.getLatLng()) && map.hasLayer(marker);
+    const want = show && count < 120 && !marker._labelSkip && bounds.contains(marker.getLatLng()) && map.hasLayer(marker);
     if (want) count++;
-    if (want && !tip.options.permanent) { marker.unbindTooltip(); marker.bindTooltip(tip._content, { permanent: true, direction: 'top', offset: [0, -28], className: 'marker-label' }); }
-    else if (!want && tip.options.permanent) { marker.unbindTooltip(); marker.bindTooltip(tip._content, { permanent: false, direction: 'top', offset: [0, -28], className: 'marker-label' }); }
+    if (want && !tip.options.permanent) { marker.unbindTooltip(); marker.bindTooltip(tip._content, { permanent: true, direction: 'top', offset: [marker._pinShift || 0, -28], className: 'marker-label' }); }
+    else if (!want && tip.options.permanent) { marker.unbindTooltip(); marker.bindTooltip(tip._content, { permanent: false, direction: 'top', offset: [marker._pinShift || 0, -28], className: 'marker-label' }); }
   });
 }
 map.on('zoomend moveend', debounce(refreshLabels, 150));
@@ -5936,6 +5937,14 @@ async function loadData() {
   mapDataLoaded = true;
   if (!sets.length) { resultCount.textContent = '資料讀取失敗'; regionCards.innerHTML = '<div class="empty">請確認來源試算表可讀取後重新整理</div>'; Home.renderPlaces(true); return; }
   allData = sets.flat();
+  /* 同一座標有多支（例如同路口的固定測速與科技執法）：圖釘左右錯開，放大時才看得到每一支 */
+  const sameSpot = new Map();
+  allData.filter(d => d.type === '測速執法').forEach(d => {
+    const k = `${d.lat},${d.lng}`;
+    if (!sameSpot.has(k)) sameSpot.set(k, []);
+    sameSpot.get(k).push(d);
+  });
+  sameSpot.forEach(list => list.forEach((d, i) => { d.pinShift = list.length > 1 ? Math.round((i - (list.length - 1) / 2) * 30) : 0; d.labelSkip = i > 0; }));
   dataByKey = new Map(allData.map(d => [keyOf(d), d]));
   applyFilter();
   setRegionFromLocation();
