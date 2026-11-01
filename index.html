@@ -295,6 +295,9 @@
     .popup-nav-btn:hover{background:#0284c7}
     .map-pin{width:30px;height:30px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid #fff;box-shadow:0 3px 9px rgba(0,0,0,.3);display:grid;place-items:center}
     .map-pin span{transform:rotate(45deg);color:#fff;font-size:11px;font-weight:900;line-height:1}
+    .pin-wrap{position:relative;width:30px;height:30px}
+    .pin-dir{position:absolute;left:19px;top:-15px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.35);display:grid;place-items:center;pointer-events:none}
+    .pin-dir svg{width:15px;height:15px;fill:currentColor;transform:rotate(var(--dir))}
     .marker-label{background:#fff;border:1px solid #b7dce4;border-radius:7px;box-shadow:0 3px 9px rgba(7,43,75,.2);color:#123b50;font-weight:900;font-size:12px;padding:3px 6px;white-space:nowrap}
     .marker-label:before{border-top-color:#b7dce4}
     .marker-cluster-small div,.marker-cluster-medium div,.marker-cluster-large div{font-weight:900}
@@ -5523,7 +5526,7 @@ function loadGenerator() {
 /* 集章卡的雲端儲存／載入網址（系統設定「集章雲端網址」），由集章卡頁面讀取 */
 function stampCloudUrl() { return CFG.stampCloudUrl || ''; }
 /* 程式版本（顯示在集章選單，方便確認手機是否已更新到最新版） */
-const APP_VERSION = '2026-11-01-v3';
+const APP_VERSION = '2026-11-01-v4';
 function appVersion() { return APP_VERSION; }
 /* 集章卡的蓋章距離（公尺，系統設定「集章偵測範圍」，預設 50） */
 function stampRange() { const n = Number(String(CFG.stampRangeM || '').replace(/[^\d.]/g, '')); return n > 0 ? n : 50; }
@@ -5625,7 +5628,7 @@ function detailPairs(d) {
   if (d.type === '景點') return [['區域', area], ['分類', [d.mainCategory, d.category].filter(Boolean).join('・')], ['地址', d.address]];
   if (d.type === '廟宇') return [['區域', area], ['主祀', d.deity], ['地址', d.address], ['電話', d.phone]];
   if (d.type === '港口' || d.type === '遊客中心') return [['區域', area], ['類別', d.category], ['地址', d.address], ['說明', d.desc], ['傳說', d.legend]];
-  if (d.type === '測速執法') return [['區域', area], ['類型', d.category], ['設備編號', d.code], ['速限', d.limit ? `${d.limit} 公里` : ''], ['拍攝方向', d.direction], ['取締項目', d.items], ['執法種類', d.techKind], ['管轄分局', d.station], ['型式', d.model]];
+  if (d.type === '測速執法') return [['區域', area], ['類型', d.kind], ['設備編號', d.code], ['速限', d.limit ? `${d.limit} 公里` : ''], ['拍攝方向', d.direction], ['取締項目', d.items], ['執法種類', d.techKind], ['管轄分局', d.station], ['型式', d.model]];
   return [['區域', area], ['類別', d.category], ['地址', d.address], ['電話', d.phone]];
 }
 function imageUrl(value) {
@@ -5660,8 +5663,8 @@ function renderNearby(d) {
   const entries = [{ place: d, km: 0, selected: true }, ...nearbyFor(d)];
   const cards = entries.map(({ place, km, selected }) => {
     const src = imageUrl(place.image);
-    const thumb = src ? `<img src="${esc(src)}" alt="${esc(place.name)}" loading="lazy" referrerpolicy="no-referrer">` : `<span aria-hidden="true">${esc(typeGlyph[place.type] || '點')}</span>`;
-    return `<button type="button" class="album-card${selected ? ' selected' : ''}" style="--album-color:${typeColor[place.type] || '#64748b'}" data-key="${esc(keyOf(place))}" aria-label="定位 ${esc(place.name)}"><span class="album-picture">${thumb}</span><span class="album-info"><span class="album-category">${esc(place.type)}${selected ? '・目前地標' : ''}</span><span class="album-name">${esc(place.name)}</span><span class="album-distance">${selected ? esc(place.village || place.region) : `約 ${Math.round(km * 1000)} 公尺`}</span></span></button>`;
+    const thumb = src ? `<img src="${esc(src)}" alt="${esc(place.name)}" loading="lazy" referrerpolicy="no-referrer">` : `<span aria-hidden="true">${esc(glyphOf(place))}</span>`;
+    return `<button type="button" class="album-card${selected ? ' selected' : ''}" style="--album-color:${colorOf(place)}" data-key="${esc(keyOf(place))}" aria-label="定位 ${esc(place.name)}"><span class="album-picture">${thumb}</span><span class="album-info"><span class="album-category">${esc(place.kind || place.type)}${selected ? '・目前地標' : ''}</span><span class="album-name">${esc(place.name)}</span><span class="album-distance">${selected ? esc(place.village || place.region) : `約 ${Math.round(km * 1000)} 公尺`}</span></span></button>`;
   }).join('');
   nearbyPanel.innerHTML = `<div class="nearby-header"><div><h2>${esc(d.name)}</h2><p class="nearby-sub">左右滑動挑選，點選圖片定位（顯示最近 ${NEARBY_LIMIT} 筆）</p></div><button type="button" class="album-arrow" data-step="-1" aria-label="向左滑動相簿">‹</button><button type="button" class="album-arrow" data-step="1" aria-label="向右滑動相簿">›</button><button type="button" class="nearby-close" aria-label="關閉相簿">關閉</button></div><div class="album-track" role="group" aria-label="${esc(d.name)}及鄰近資料相簿">${cards}</div>`;
   nearbyPanel.hidden = false;
@@ -5696,11 +5699,24 @@ function rowMeta(d) {
   if (d.type === '美食') return [d.mainCategory, d.category, d.service].filter(Boolean).join('・');
   if (d.type === '景點') return [d.village, d.mainCategory, d.category].filter(Boolean).join('・');
   if (d.type === '廟宇') return [d.village, d.deity ? `主祀：${d.deity}` : ''].filter(Boolean).join('・');
+  if (d.type === '測速執法') return [d.village, d.kind].filter(Boolean).join('・');
   return [d.village, d.category].filter(Boolean).join('・');
 }
+const glyphOf = d => d.glyph || typeGlyph[d.type] || '點';
+const colorOf = d => d.color || typeColor[d.type] || '#64748b';
+/* 拍攝方向「東南向西北」＝車輛由東南往西北行駛，換成箭頭角度（北 0°、順時針） */
+function directionDeg(text) {
+  const m = String(text || '').replace(/\s/g, '').match(/^([東西南北]{1,2})[向往]([東西南北]{1,2})$/);
+  if (!m) return null;
+  const v = { 東: [1, 0], 西: [-1, 0], 南: [0, -1], 北: [0, 1] };
+  const [x, y] = [...m[2]].reduce((a, c) => [a[0] + v[c][0], a[1] + v[c][1]], [0, 0]);
+  return x || y ? Math.round(Math.atan2(x, y) * 180 / Math.PI) : null;
+}
 function pinIcon(d) {
-  const color = typeColor[d.type] || '#64748b';
-  return L.divIcon({ className: '', html: `<div class="map-pin" style="background:${color}"><span>${esc(typeGlyph[d.type] || '點')}</span></div>`, iconSize: [30, 30], iconAnchor: [15, 30], popupAnchor: [0, -28] });
+  const color = colorOf(d);
+  const deg = d.type === '測速執法' ? directionDeg(d.direction) : null;
+  const arrow = deg === null ? '' : `<span class="pin-dir" style="--dir:${deg}deg;color:${color}" title="${esc(d.direction)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5 20 10.5H14.5V22.5H9.5V10.5H4Z"/></svg></span>`;
+  return L.divIcon({ className: '', html: `<div class="pin-wrap"><div class="map-pin" style="background:${color}"><span>${esc(glyphOf(d))}</span></div>${arrow}</div>`, iconSize: [30, 30], iconAnchor: [15, 30], popupAnchor: [0, -28] });
 }
 function buildMarker(d) {
   const m = L.marker([d.lat, d.lng], { icon: pinIcon(d), title: d.name });
@@ -5773,9 +5789,9 @@ function selectRegion(region) {
 
 /* 清單（分批渲染，避免一次產生上千個節點） */
 function rowHtml(d) {
-  const color = typeColor[d.type] || '#64748b';
+  const color = colorOf(d);
   const closed = isClosed(d) ? '<span class="closed-tag">歇業</span>' : '';
-  const content = `<span class="type-badge" style="background:${color}18;color:${color}">${esc(typeGlyph[d.type] || '點')}</span><span><span class="data-name">${esc(d.name)}${closed}</span><span class="data-meta">${esc([d.region, rowMeta(d)].filter(Boolean).join('・'))}</span></span><span class="locate" aria-hidden="true">⌖</span>`;
+  const content = `<span class="type-badge" style="background:${color}18;color:${color}">${esc(glyphOf(d))}</span><span><span class="data-name">${esc(d.name)}${closed}</span><span class="data-meta">${esc([d.region, rowMeta(d)].filter(Boolean).join('・'))}</span></span><span class="locate" aria-hidden="true">⌖</span>`;
   const cls = `data-row${isClosed(d) ? ' is-closed' : ''}`;
   return isMobile()
     ? `<a class="${cls}" href="${esc(getTargetUrl(d))}" target="_blank" rel="noopener noreferrer">${content}</a>`
@@ -5880,9 +5896,11 @@ function normalizeSheetRow(row, config) {
   if (config.speed) {
     Object.assign(d, { code: pick('設備編號'), limit: pick('速限'), direction: pick('拍攝方向'), items: pick('取締項目'),
       techKind: pick('科技執法種類'), station: pick('管轄分局'), model: pick('型式') });
-    d.category = pick('類型');
+    d.kind = pick('類型');
+    d.glyph = d.kind === '科技執法' ? '執' : '速';
+    d.color = d.kind === '科技執法' ? '#7c3aed' : '#dc2626';
   }
-  d.searchText = [d.name, d.region, d.village, d.mainCategory, d.category, d.service, d.recommendation, d.deity, d.address, d.hours, d.type, d.desc || '', d.items || ''].join(' ').toLowerCase();
+  d.searchText = [d.name, d.region, d.village, d.mainCategory, d.category, d.service, d.recommendation, d.deity, d.address, d.hours, d.type, d.desc || '', d.items || '', d.kind || ''].join(' ').toLowerCase();
   return d;
 }
 /* 讀取單一工作表：先用 gid 匯出 CSV；gid 失效時改用「工作表名稱」讀取 */
