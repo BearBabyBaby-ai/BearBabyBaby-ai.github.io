@@ -5526,7 +5526,7 @@ function loadGenerator() {
 /* 集章卡的雲端儲存／載入網址（系統設定「集章雲端網址」），由集章卡頁面讀取 */
 function stampCloudUrl() { return CFG.stampCloudUrl || ''; }
 /* 程式版本（顯示在集章選單，方便確認手機是否已更新到最新版） */
-const APP_VERSION = '2026-11-01-v5';
+const APP_VERSION = '2026-11-01-v6';
 function appVersion() { return APP_VERSION; }
 /* 集章卡的蓋章距離（公尺，系統設定「集章偵測範圍」，預設 50） */
 function stampRange() { const n = Number(String(CFG.stampRangeM || '').replace(/[^\d.]/g, '')); return n > 0 ? n : 50; }
@@ -5607,7 +5607,8 @@ const LABEL_ZOOM = 16;
 let allData = [], dataByKey = new Map(), visibleData = [], activeType = '', activeSub = '', activeRegion = '';
 let markerMap = new Map(), renderedCount = 0, lastMobile = isMobile(), mapShownOnce = false, mapDataLoaded = false;
 
-const keyOf = d => `${d.type}|${d.name}|${d.lat}|${d.lng}`;
+/* 測速執法：同路口的固定測速與科技執法名稱、座標相同，加上類型才不會被當成同一支 */
+const keyOf = d => d.kind ? `${d.type}|${d.kind}|${d.name}|${d.lat}|${d.lng}` : `${d.type}|${d.name}|${d.lat}|${d.lng}`;
 const isClosed = d => /歇業|停業|結束營業/.test(d.hours || '');
 
 /* 地圖分頁第一次顯示時，Leaflet 需要重新量測容器大小 */
