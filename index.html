@@ -2734,7 +2734,8 @@ function loadSheetData() {
   }
   updateVisibility();
 
-  document.getElementById('regionSelect').innerHTML = `<option value="">1. 選擇 ${config.label1 || '第一層'}</option>`; 
+  /* 測速、科技執法：區域可不選，載入後直接列出全部 */
+  document.getElementById('regionSelect').innerHTML = sheetName === '測速執法' ? '<option value="">全部區域</option>' : `<option value="">1. 選擇 ${config.label1 || '第一層'}</option>`; 
   document.getElementById('regionSelect').disabled = true; 
   document.getElementById('mainCatSelect').innerHTML = `<option value="">2. 選擇 ${config.label2 || '第二層'}</option>`; 
   document.getElementById('mainCatSelect').disabled = true; 
@@ -2789,6 +2790,7 @@ function loadSheetData() {
 
     if (allData.length > 0) {
       populateRegion();
+      if (sheetName === '測速執法') updateMainCat();
       if (sheetName === '景點' || sheetName === '廟宇') {
         setStatus(`✅ 已載入「${sheetName}」${allData.length} 筆；目前圖資來源欄位：${activeAttractionImageField}`, 'success');
       } else {
@@ -2892,7 +2894,8 @@ function updateMainCat() {
   
   updateVisibility();
 
-  if (!region) { 
+  const allRegions = document.getElementById('sourceSelect').value === '測速執法';
+  if (!region && !allRegions) { 
     filteredData = [];
     updateSelectedCount();
     updateRandomButtonState(); 
@@ -2901,7 +2904,7 @@ function updateMainCat() {
     return; 
   } 
   
-  const filtered = allData.filter(item => normalizeRegion(item._dd1) === normalizeRegion(region)); 
+  const filtered = region ? allData.filter(item => normalizeRegion(item._dd1) === normalizeRegion(region)) : allData; 
   const mainValues = config.type === '2-level' ? ['景點', '展館'].filter(category => filtered.some(item => item._dd2 === category)) : [...new Set(filtered.flatMap(item => item._sourceSheet === '美食清單' ? foodCategoryTokens(item['主類別']) : [item._dd2]))].filter(v => v && (document.getElementById('sourceSelect').value !== '美食清單' || !HIDDEN_FOOD_CATEGORIES.has(v))); 
   mainValues.forEach(m => { 
     const opt = document.createElement('option'); 
@@ -3632,7 +3635,7 @@ async function executeGlobalSearch(presetName = '') {
   /* 已選「資料類型」與「區域」時：關鍵字只在目前的下拉篩選（資料類型、區域、分類、細分類）結果中搜尋，不跨區 */
   const dropSource = document.getElementById('sourceSelect').value;
   const dropRegion = document.getElementById('regionSelect').value;
-  if (!presetName && !isQuickAll && dropSource && dropRegion && allData.length) {
+  if (!presetName && !isQuickAll && dropSource && (dropRegion || dropSource === '測速執法') && allData.length) {
     isSearchMode = false;
     currentSearchKeyword = '';
     setActiveQuickChip('');
@@ -3794,7 +3797,7 @@ function displayResults() {
   document.getElementById('resultsHeading').textContent = '資料結果';
   document.getElementById('resultsSubHeading').textContent = '勾選需要的項目後直接下載';
 
-  if (!region) {
+  if (!region && sourceSheet !== '測速執法') {
     filteredData = [];
     updateSelectedCount();
     updateRandomButtonState();
@@ -3820,7 +3823,7 @@ function displayResults() {
   }
 
   filteredData = allData.filter(item => {
-    if (normalizeRegion(item._dd1) !== normalizeRegion(region)) return false;
+    if (region && normalizeRegion(item._dd1) !== normalizeRegion(region)) return false;
     let match2 = true, match3 = true;
     if (sourceSheet === '景點') {
       match2 = mainCat ? item._dd2 === mainCat : true;
@@ -4132,7 +4135,7 @@ function exportTXT() {
   /* 2. 一般下拉式篩選下載處理 */
   const sourceSheetForValidation = document.getElementById('sourceSelect').value; 
   if (sourceSheetForValidation === '測速執法') {
-    const region = document.getElementById('regionSelect').value;
+    const region = document.getElementById('regionSelect').value || '全部區域';
     const parts = [document.getElementById('mainCatSelect').value, document.getElementById('subCatSelect').value ? `速限${document.getElementById('subCatSelect').value}` : ''].filter(Boolean);
     const title = `澎湖測速、科技執法 - ${region}${parts.length ? ' ' + parts.join('-') : ''}`;
     const body = exportRows.map(row => `${buildItemText(row, '測速執法')}\n----------------------------------------\n`).join('\n');
@@ -5527,7 +5530,7 @@ function loadGenerator() {
 /* 集章卡的雲端儲存／載入網址（系統設定「集章雲端網址」），由集章卡頁面讀取 */
 function stampCloudUrl() { return CFG.stampCloudUrl || ''; }
 /* 程式版本（顯示在集章選單，方便確認手機是否已更新到最新版） */
-const APP_VERSION = '2026-11-01-v7';
+const APP_VERSION = '2026-11-01-v8';
 function appVersion() { return APP_VERSION; }
 /* 集章卡的蓋章距離（公尺，系統設定「集章偵測範圍」，預設 50） */
 function stampRange() { const n = Number(String(CFG.stampRangeM || '').replace(/[^\d.]/g, '')); return n > 0 ? n : 50; }
