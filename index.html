@@ -1960,6 +1960,7 @@ button.results-sentinel{grid-column:1/-1;height:42px;border:1px dashed #c8dfe8!i
       <label class="sheet-check-label spot" id="tabSpotLabel"><input type="checkbox" id="tabSpot" checked onchange="filterSearchResultsBySheet('景點', this.checked)"><span>🏞 景點 (<span id="countSpot">0</span>)</span></label>
       <label class="sheet-check-label temple" id="tabTempleLabel"><input type="checkbox" id="tabTemple" checked onchange="filterSearchResultsBySheet('廟宇', this.checked)"><span>⛩ 廟宇 (<span id="countTemple">0</span>)</span></label>
       <label class="sheet-check-label shop" id="tabOtherLabel"><input type="checkbox" id="tabOther" checked onchange="filterSearchResultsBySheet('其他店家', this.checked)"><span>🏪 其他店家 (<span id="countOther">0</span>)</span></label>
+      <label class="sheet-check-label speed" id="tabSpeedLabel"><input type="checkbox" id="tabSpeed" checked onchange="filterSearchResultsBySheet('測速執法', this.checked)"><span>🚨 測速、科技執法 (<span id="countSpeed">0</span>)</span></label>
       </div>
     </div>
 
@@ -2159,12 +2160,11 @@ const QUICK_KEYWORDS = [
     }
   }
 ];
-const ALL_SHEETS = ['美食清單', '景點', '廟宇', '其他店家'];
-/* 測速、科技執法只在下拉選單使用（不加入關鍵字搜尋的工作表） */
-const GEN_EXTRA_SHEETS = ['測速執法'];
+const ALL_SHEETS = ['美食清單', '景點', '廟宇', '其他店家', '測速執法'];
+const GEN_EXTRA_SHEETS = [];
 const sheetSelected = sheet => !ALL_SHEETS.includes(sheet) || selectedSearchSheets.has(sheet);
 const SHEET_UI = {
-  '測速執法': { badge: 'speed', icon: '🚨' },
+  '測速執法': { badge: 'speed', icon: '🚨', tabId: 'tabSpeed', countId: 'countSpeed' },
   '美食清單': { badge: 'food', icon: '🍜', tabId: 'tabFood', countId: 'countFood' },
   '景點': { badge: 'spot', icon: '🏞️', tabId: 'tabSpot', countId: 'countSpot' },
   '廟宇': { badge: 'temple', icon: '⛩️', tabId: 'tabTemple', countId: 'countTemple' },
@@ -4083,6 +4083,7 @@ function exportTXT() {
       const row = filteredData[idx];
       if (!row) return;
       const srcSheet = row._sourceSheet;
+      if (srcSheet === '測速執法') { publishItemContent += `${buildItemText(row, srcSheet)}\n----------------------------------------\n\n`; return; }
       const aiTxt = buildAiItemText(row, srcSheet);
       const pubTxt = buildItemText(row, srcSheet);
 
@@ -4106,9 +4107,15 @@ function exportTXT() {
 
     const headerTemplate = getPromptHeaderTemplate(titleString, elementLabel, elements, stylesText, decorationText, footerText);
 
-    const fullInstructionTxt = headerTemplate + buildExportInventory(exportRows) + instructionItemContent;
+    const aiRows = exportRows.filter(row => row._sourceSheet !== '測速執法');
+    const fullInstructionTxt = headerTemplate + buildExportInventory(aiRows) + instructionItemContent;
     const fullPublishTxt = `${titleString}\n\n${publishItemContent}`;
 
+    if (!aiRows.length) {
+      triggerDownload(fullPublishTxt, `澎湖_關鍵字搜尋_${exportKeyword}_文字.txt`);
+      setStatus(`✅ 已下載「${currentSearchKeyword}」測速、科技執法共 ${checkedBoxes.length} 筆（文字）。`, 'success');
+      return;
+    }
     triggerDownload(fullInstructionTxt, `澎湖_關鍵字搜尋_${exportKeyword}_AI生圖指令.txt`);
     setTimeout(() => {
       triggerDownload(fullPublishTxt, `澎湖_關鍵字搜尋_${exportKeyword}_發布用.txt`);
@@ -5516,7 +5523,7 @@ function loadGenerator() {
 /* 集章卡的雲端儲存／載入網址（系統設定「集章雲端網址」），由集章卡頁面讀取 */
 function stampCloudUrl() { return CFG.stampCloudUrl || ''; }
 /* 程式版本（顯示在集章選單，方便確認手機是否已更新到最新版） */
-const APP_VERSION = '2026-11-01-v2';
+const APP_VERSION = '2026-11-01-v3';
 function appVersion() { return APP_VERSION; }
 /* 集章卡的蓋章距離（公尺，系統設定「集章偵測範圍」，預設 50） */
 function stampRange() { const n = Number(String(CFG.stampRangeM || '').replace(/[^\d.]/g, '')); return n > 0 ? n : 50; }
