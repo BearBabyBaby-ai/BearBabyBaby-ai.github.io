@@ -298,6 +298,7 @@
     .pin-wrap{position:relative;width:30px;height:30px}
     .pin-dir{position:absolute;left:19px;top:-15px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.35);display:grid;place-items:center;pointer-events:none}
     .pin-dir svg{width:15px;height:15px;fill:currentColor;transform:rotate(var(--dir))}
+    .pin-limit{position:absolute;left:3px;top:33px;width:24px;height:24px;border-radius:50%;background:#fff;border:3px solid #dc2626;box-shadow:0 2px 6px rgba(0,0,0,.3);display:grid;place-items:center;color:#111;font:900 11px/1 system-ui,sans-serif;pointer-events:none}
     .marker-label{background:#fff;border:1px solid #b7dce4;border-radius:7px;box-shadow:0 3px 9px rgba(7,43,75,.2);color:#123b50;font-weight:900;font-size:12px;padding:3px 6px;white-space:nowrap}
     .marker-label:before{border-top-color:#b7dce4}
     .marker-cluster-small div,.marker-cluster-medium div,.marker-cluster-large div{font-weight:900}
@@ -5526,7 +5527,7 @@ function loadGenerator() {
 /* 集章卡的雲端儲存／載入網址（系統設定「集章雲端網址」），由集章卡頁面讀取 */
 function stampCloudUrl() { return CFG.stampCloudUrl || ''; }
 /* 程式版本（顯示在集章選單，方便確認手機是否已更新到最新版） */
-const APP_VERSION = '2026-11-01-v6';
+const APP_VERSION = '2026-11-01-v7';
 function appVersion() { return APP_VERSION; }
 /* 集章卡的蓋章距離（公尺，系統設定「集章偵測範圍」，預設 50） */
 function stampRange() { const n = Number(String(CFG.stampRangeM || '').replace(/[^\d.]/g, '')); return n > 0 ? n : 50; }
@@ -5717,7 +5718,8 @@ function pinIcon(d) {
   const color = colorOf(d);
   const deg = d.type === '測速執法' ? directionDeg(d.direction) : null;
   const arrow = deg === null ? '' : `<span class="pin-dir" style="--dir:${deg}deg;color:${color}" title="${esc(d.direction)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5 20 10.5H14.5V22.5H9.5V10.5H4Z"/></svg></span>`;
-  return L.divIcon({ className: '', html: `<div class="pin-wrap"><div class="map-pin" style="background:${color}"><span>${esc(glyphOf(d))}</span></div>${arrow}</div>`, iconSize: [30, 30], iconAnchor: [15 - (d.pinShift || 0), 30], popupAnchor: [d.pinShift || 0, -28] });
+  const limit = d.type === '測速執法' && d.limit ? `<span class="pin-limit" title="速限 ${esc(d.limit)}">${esc(d.limit)}</span>` : '';   /* 速限標誌（圖釘下方） */
+  return L.divIcon({ className: '', html: `<div class="pin-wrap"><div class="map-pin" style="background:${color}"><span>${esc(glyphOf(d))}</span></div>${arrow}${limit}</div>`, iconSize: [30, 30], iconAnchor: [15 - (d.pinShift || 0), 30], popupAnchor: [d.pinShift || 0, -28] });
 }
 function buildMarker(d) {
   const m = L.marker([d.lat, d.lng], { icon: pinIcon(d), title: d.name });
