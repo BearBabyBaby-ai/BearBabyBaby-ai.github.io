@@ -5351,7 +5351,7 @@ const HUB_ID = '1LOr4_3ugTHvTIi4UIfgVz2atVFh2K32zh7YKrrHxTwk';
 const HUB_SHEETS = { settings: { gid: '0', sheet: '系統設定' }, notices: { gid: '101', sheet: '公告' }, links: { gid: '102', sheet: '快速連結' } };
 /* 各工作表的 gid（gid 失效時會改用工作表名稱讀取） */
 const HUB_GIDS = {
-  food: '1582663006', spot: '2085392869', temple: '2137991614', shop: '1777099957', port: '777001',
+  food: '1582663006', spot: '2085392869', temple: '2137991614', shop: '1777099957', port: '777001', speed: '777020',
   special: '2116605762', activity: '1977832611', tide: '1122135459', forecast: '776158339'
 };
 const CFG = {
@@ -5473,7 +5473,7 @@ function loadGenerator() {
 /* 集章卡的雲端儲存／載入網址（系統設定「集章雲端網址」），由集章卡頁面讀取 */
 function stampCloudUrl() { return CFG.stampCloudUrl || ''; }
 /* 程式版本（顯示在集章選單，方便確認手機是否已更新到最新版） */
-const APP_VERSION = '2026-10-29-v3';
+const APP_VERSION = '2026-11-01-v0';
 function appVersion() { return APP_VERSION; }
 /* 集章卡的蓋章距離（公尺，系統設定「集章偵測範圍」，預設 50） */
 function stampRange() { const n = Number(String(CFG.stampRangeM || '').replace(/[^\d.]/g, '')); return n > 0 ? n : 50; }
@@ -5521,7 +5521,12 @@ const sheetConfigs = [
   { key: '港口、遊客中心', gid: HUB_GIDS.port, type: '港口', nameField: '景點名稱', glyph: '港', color: '#0e7490', home: false,
     match: row => clean(row['主類別']) === '交通設施' },
   { key: '港口、遊客中心', gid: HUB_GIDS.port, type: '遊客中心', nameField: '景點名稱', glyph: '遊', color: '#e11d48', home: false,
-    match: row => clean(row['主類別']) !== '交通設施' }
+    match: row => clean(row['主類別']) !== '交通設施' },
+  /* 工作表「測速與科技執法」：類型「固定測速」「科技執法」分開顯示；首頁統計不列入 */
+  { key: '測速與科技執法', gid: HUB_GIDS.speed, type: '固定測速', nameField: '設置地點', glyph: '速', color: '#dc2626', home: false, speed: true,
+    required: ['鄉市', '設置地點', '緯度', '經度'], match: row => clean(row['類型']) === '固定測速' },
+  { key: '測速與科技執法', gid: HUB_GIDS.speed, type: '科技執法', nameField: '設置地點', glyph: '執', color: '#7c3aed', home: false, speed: true,
+    required: ['鄉市', '設置地點', '緯度', '經度'], match: row => clean(row['類型']) === '科技執法' }
 ];
 const regionOrder = ['馬公市', '湖西鄉', '白沙鄉', '西嶼鄉', '望安鄉', '七美鄉'];
 const typeGlyph = {}, typeColor = {};
@@ -5572,6 +5577,7 @@ function detailPairs(d) {
   if (d.type === '景點') return [['區域', area], ['分類', [d.mainCategory, d.category].filter(Boolean).join('・')], ['地址', d.address]];
   if (d.type === '廟宇') return [['區域', area], ['主祀', d.deity], ['地址', d.address], ['電話', d.phone]];
   if (d.type === '港口' || d.type === '遊客中心') return [['區域', area], ['類別', d.category], ['地址', d.address], ['說明', d.desc], ['傳說', d.legend]];
+  if (d.type === '固定測速' || d.type === '科技執法') return [['區域', area], ['設備編號', d.code], ['速限', d.limit ? `${d.limit} 公里` : ''], ['拍攝方向', d.direction], ['取締項目', d.items], ['執法種類', d.techKind], ['管轄分局', d.station], ['型式', d.model]];
   return [['區域', area], ['類別', d.category], ['地址', d.address], ['電話', d.phone]];
 }
 function imageUrl(value) {
@@ -5808,7 +5814,7 @@ function normalizeSheetRow(row, config) {
   const name = pick(config.nameField, '名稱');
   if (!name || !Number.isFinite(lat) || !Number.isFinite(lng) || lat < 22.8 || lat > 24 || lng < 119 || lng > 120.2) return null;
   const d = {
-    type: config.type, sheet: config.key, region: pick('區域(鄉市)'), village: pick('區域(村里)'),
+    type: config.type, sheet: config.key, region: pick('區域(鄉市)', '鄉市'), village: pick('區域(村里)'),
     mainCategory: pick('主類別'), category: pick('類別', '次類別'), name, service: pick('代表餐食／服務'),
     recommendation: pick('推薦菜色／行程'), deity: pick('主祀'), phone: pick('電話'), address: pick('地址'), hours: pick('營業時間'),
     mapUrl: pick('短網址', '地圖連結', '導航', '網址'), fullUrl: pick('完整網址'),
@@ -5822,7 +5828,13 @@ function normalizeSheetRow(row, config) {
     d.history = byPrefix('廟宇史蹟'); d.legend = pick('傳說');
   }
   if (config.match) { d.desc = pick('簡易說明'); d.legend = pick('傳說'); }   /* 港口、遊客中心的說明與傳說 */
-  d.searchText = [d.name, d.region, d.village, d.mainCategory, d.category, d.service, d.recommendation, d.deity, d.address, d.hours, d.type, d.desc || ''].join(' ').toLowerCase();
+  /* 測速與科技執法：設備編號、速限、拍攝方向、取締項目、科技執法種類、管轄分局、型式 */
+  if (config.speed) {
+    Object.assign(d, { code: pick('設備編號'), limit: pick('速限'), direction: pick('拍攝方向'), items: pick('取締項目'),
+      techKind: pick('科技執法種類'), station: pick('管轄分局'), model: pick('型式') });
+    d.category = config.type === '固定測速' ? (d.limit ? `速限 ${d.limit}` : '') : d.techKind;
+  }
+  d.searchText = [d.name, d.region, d.village, d.mainCategory, d.category, d.service, d.recommendation, d.deity, d.address, d.hours, d.type, d.desc || '', d.items || ''].join(' ').toLowerCase();
   return d;
 }
 /* 讀取單一工作表：先用 gid 匯出 CSV；gid 失效時改用「工作表名稱」讀取 */
@@ -5833,7 +5845,7 @@ function parseSheetCsv(url, config) {
       complete: results => {
         if (results.errors?.length && results.data.length === 0) return reject(results.errors[0]);
         const headers = results.meta?.fields || [];
-        const missing = ['區域(鄉市)', config.nameField, 'Latitude', 'Longitude'].filter(n => !headers.includes(n));
+        const missing = (config.required || ['區域(鄉市)', config.nameField, 'Latitude', 'Longitude']).filter(n => !headers.includes(n));
         if (missing.length) return reject(new Error(`${config.key} 缺少欄位：${missing.join('、')}`));
         resolve(results.data.map(row => normalizeSheetRow(row, config)).filter(Boolean));
       },
