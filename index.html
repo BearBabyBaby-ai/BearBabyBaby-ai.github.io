@@ -1870,6 +1870,7 @@ body.lightbox-open{overflow:hidden}
 .result-card.shop .ai-box{border-left-color:#16a34a!important}
 .result-card.is-closed{background:linear-gradient(180deg,#fff5f5 0%,#fffafa 100%)!important}
 .closed-tag{display:inline-block;padding:1px 8px;border-radius:999px;background:#fee2e2;color:#b91c1c;font-weight:900}
+.island-tag{display:inline-block;padding:1px 8px;border-radius:999px;background:#e0f2fe;color:#0369a1;font-weight:900}
 .type-pill{padding:2px 8px;border-radius:6px;font-weight:900}.type-pill.sun{color:#8a5a12;background:var(--sun-soft)}.type-pill.green{color:#1f6b55;background:#e8f5f0}.type-pill.orange{color:#9c5714;background:#fdf3e1}.type-pill.blue{color:#147c9d;background:#e9f7fb}
 .quick-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)}
 .quick-label{font-size:11.5px;font-weight:900;color:#436272;letter-spacing:.04em;margin-right:2px}
@@ -2134,13 +2135,7 @@ const QUICK_KEYWORDS = [
     "excludePresets": [
       "馬公市區",
       "南環島"
-    ],
-    "excludeTerms": {
-      "馬公市": [
-        "虎井",
-        "桶盤"
-      ]
-    }
+    ]
   },
   {
     "name": "市區觀光",
@@ -2394,6 +2389,8 @@ function buildResultCard(item, index, opts) {
 
   const region = item['區域(鄉市)'] || item._dd1 || '澎湖';
   const tags = [`<span>📍 ${escapeHtml(region)}</span>`];
+  const island = magongIslandOf(item);
+  if (island) tags.push(`<span class="island-tag">🏝️ 離島（${escapeHtml(island)}）</span>`);
   const metaRows = [];
   if (sourceSheet === '美食清單') {
     const main = item['主類別'], sub = item['類別'];
@@ -3084,7 +3081,20 @@ function toggleTxtPreview(button) {
   button.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
 }
 
+/* 馬公市的離島（虎井、桶盤）：卡片與輸出文字特別備註「離島」 */
+function magongIslandOf(item) {
+  if (!item || normalizeRegion(item['區域(鄉市)']) !== '馬公市') return '';
+  const text = [item['區域(村里)'], item['地址'], item['名稱'], item['景點名稱'], item['廟宇名稱']].map(v => String(v || '')).join(' ');
+  return (text.match(/虎井|桶盤/) || [''])[0];
+}
+function withIslandNote(item, text) {
+  const island = magongIslandOf(item);
+  return island ? `${String(text || '').trimEnd()}\n備註：離島（${island}）` : text;
+}
 function buildItemText(item, sourceSheet, mainCat = '', subCat = '') {
+  return withIslandNote(item, buildItemTextBase(item, sourceSheet, mainCat, subCat));
+}
+function buildItemTextBase(item, sourceSheet, mainCat = '', subCat = '') {
   if (!item) return '';
   let text = '';
   let name = '未提供名稱';
@@ -3157,7 +3167,7 @@ function stripTxtMetadata(content) {
 
 function buildAiItemText(item, sourceSheet, mainCat = '', subCat = '') {
   if (sourceSheet === '測速執法') return buildItemText(item, sourceSheet);   /* 只輸出文字 */
-  const baseText = sourceSheet === '美食清單' ? buildFoodExportText(item)
+  const baseText = sourceSheet === '美食清單' ? withIslandNote(item, buildFoodExportText(item))
     : buildItemText(item, sourceSheet, mainCat, subCat);
   return stripTxtMetadata(baseText)
     .split(/\r?\n/)
@@ -5563,7 +5573,7 @@ function loadGenerator() {
 /* 集章卡的雲端儲存／載入網址（系統設定「集章雲端網址」），由集章卡頁面讀取 */
 function stampCloudUrl() { return CFG.stampCloudUrl || ''; }
 /* 程式版本（顯示在集章選單，方便確認手機是否已更新到最新版） */
-const APP_VERSION = '2026-11-01-v10';
+const APP_VERSION = '2026-11-01-v11';
 function appVersion() { return APP_VERSION; }
 /* 集章卡的蓋章距離（公尺，系統設定「集章偵測範圍」，預設 50） */
 function stampRange() { const n = Number(String(CFG.stampRangeM || '').replace(/[^\d.]/g, '')); return n > 0 ? n : 50; }
