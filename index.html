@@ -1856,6 +1856,10 @@ body.lightbox-open{overflow:hidden}
 
 /* ===== 2026-10 追加：其他店家、快速關鍵字、歇業標示 ===== */
 .sheet-badge.shop{background:#dcfce7;color:#166534;border:1px solid #bbf7d0}
+.sheet-badge.speed{background:#fee2e2;color:#991b1b;border:1px solid #fecaca}
+.result-card.speed{border-color:#dc2626!important}
+.result-card.speed::before{background:linear-gradient(180deg,#dc2626,#f87171)}
+.result-card.speed .ai-box{border-left-color:#dc2626!important}
 .search-tab-btn.shop.active{background:#16a34a!important;border-color:#15803d!important;box-shadow:0 4px 12px rgba(22,163,74,.22)!important}
 .result-card.shop{border-color:#16a34a!important}
 .result-card.shop::before{background:linear-gradient(180deg,#16a34a,#4ade80)}
@@ -1910,6 +1914,7 @@ button.results-sentinel{grid-column:1/-1;height:42px;border:1px dashed #c8dfe8!i
           <option value="景點">景點</option>
           <option value="廟宇">廟宇</option>
           <option value="其他店家">其他店家</option>
+          <option value="測速執法">測速、科技執法</option>
         </select>
       </div>
       <div class="control-field">
@@ -2000,7 +2005,8 @@ const SHEET_GIDS = {
   "美食清單": "1582663006",
   "景點": "2085392869",
   "廟宇": "2137991614",
-  "其他店家": "1777099957"
+  "其他店家": "1777099957",
+  "測速執法": "777020"
 };
 const QUICK_KEYWORDS = [
   {
@@ -2154,7 +2160,11 @@ const QUICK_KEYWORDS = [
   }
 ];
 const ALL_SHEETS = ['美食清單', '景點', '廟宇', '其他店家'];
+/* 測速、科技執法只在下拉選單使用（不加入關鍵字搜尋的工作表） */
+const GEN_EXTRA_SHEETS = ['測速執法'];
+const sheetSelected = sheet => !ALL_SHEETS.includes(sheet) || selectedSearchSheets.has(sheet);
 const SHEET_UI = {
+  '測速執法': { badge: 'speed', icon: '🚨' },
   '美食清單': { badge: 'food', icon: '🍜', tabId: 'tabFood', countId: 'countFood' },
   '景點': { badge: 'spot', icon: '🏞️', tabId: 'tabSpot', countId: 'countSpot' },
   '廟宇': { badge: 'temple', icon: '⛩️', tabId: 'tabTemple', countId: 'countTemple' },
@@ -2370,6 +2380,10 @@ function buildResultCard(item, index, opts) {
     if (village) tags.push(`<span>🏘️ ${escapeHtml(village)}</span>`);
     if (sourceSheet === '廟宇' && item['主祀']) tags.push(`<span>⛩️ ${escapeHtml(item['主祀'])}</span>`);
     if (sourceSheet === '其他店家' && item['類別']) tags.push(`<span>🏷️ ${escapeHtml(item['類別'])}</span>`);
+    if (sourceSheet === '測速執法') {
+      if (item['類型']) tags.push(`<span>🚨 ${escapeHtml(item['類型'])}</span>`);
+      if (checkValid(item['速限'])) tags.push(`<span>⏱️ 速限 ${escapeHtml(item['速限'])}</span>`);
+    }
     const addr = getFoodField(item, '地址'), phone = getFoodField(item, '電話');
     if (addr) metaRows.push(['🏠 地址', addr]);
     if (phone) metaRows.push(['☎️ 電話', phone]);
@@ -2532,6 +2546,7 @@ function getSheetConfig() {
   if (sheet === '景點') { return { type: '2-level', dd1: '區域(鄉市)', dd2: '次類別', label1: '區域(鄉市)', label2: '分類（選填）', label3: null }; }
   if (sheet === '廟宇') { return { type: '1-level-cascade', dd1: '區域(鄉市)', dd2: '區域(村里)', dd3: '主祀', label1: '區域(鄉市)', label2: '區域(村里) (選填)', label3: '主祀 (選填)' }; }
   if (sheet === '其他店家') { return { type: '1-level-cascade', dd1: '區域(鄉市)', dd2: '類別', dd3: '區域(村里)', label1: '區域(鄉市)', label2: '類別 (選填)', label3: '區域(村里) (選填)' }; }
+  if (sheet === '測速執法') { return { type: '1-level-cascade', dd1: '區域(鄉市)', dd2: '類型', dd3: '速限', label1: '區域(鄉市)', label2: '類型 (選填)', label3: '速限 (選填)' }; }
   return { type: '1-level-cascade-split', dd1: '區域(鄉市)', dd2: '主類別', dd3: '類別', label1: '區域(鄉市)', label2: '主類別 (選填)', label3: '類別 (選填)' };
 }
 
@@ -2664,6 +2679,7 @@ function parseSheetRaw(sheetName) {
             const required = sheetName === '美食清單' ? ['區域(鄉市)', '主類別', '類別', '名稱']
               : sheetName === '景點' ? ['區域(鄉市)', '景點名稱']
               : sheetName === '廟宇' ? ['區域(鄉市)', '廟宇名稱', '主祀']
+              : sheetName === '測速執法' ? ['類型', '設置地點', '鄉市']
               : ['區域(鄉市)', '名稱'];
             const missing = required.filter(name => !headers.includes(name));
             if (missing.length) throw new Error(`${sheetName} 缺少欄位：${missing.join('、')}`);
@@ -2671,6 +2687,7 @@ function parseSheetRaw(sheetName) {
             const parsed = results.data.slice(1).map(row => {
               const item = { _raw: row, _sourceSheet: sheetName };
               headers.forEach((h, i) => { if (h && !h.startsWith('_')) item[h] = row[i]; });
+              if (sheetName === '測速執法' && !item['區域(鄉市)']) item['區域(鄉市)'] = item['鄉市'];
               return item;
             }).filter(item => String(item['區域(鄉市)'] || '').trim());
             done(parsed);
@@ -2960,6 +2977,7 @@ function getItemDisplayName(item, sheetName) {
   if (sheetName === '景點') return item['景點名稱'] || '未提供景點名稱';
   if (sheetName === '廟宇') return cleanTempleName(item['廟宇名稱'] || '未提供廟宇名稱');
   if (sheetName === '其他店家') return String(item['名稱'] || '').trim() || '未提供名稱';
+  if (sheetName === '測速執法') return String(item['設置地點'] || '').trim() || '未提供名稱';
   return getFoodName(item);
 }
 
@@ -3074,6 +3092,20 @@ function buildItemText(item, sourceSheet, mainCat = '', subCat = '') {
     return text.trimEnd();
   }
 
+  if (sourceSheet === '測速執法') {
+    const line = (label, value) => { if (checkValid(value)) text += `${label}：${String(value).trim()}\n`; };
+    line('類型', item['類型']);
+    line('設置地點', item['設置地點']);
+    line('區域', item['鄉市'] || item['區域(鄉市)']);
+    if (checkValid(item['速限'])) text += `速限：${String(item['速限']).trim()} 公里\n`;
+    line('拍攝方向', item['拍攝方向']);
+    line('取締項目', item['取締項目']);
+    line('科技執法種類', item['科技執法種類']);
+    line('管轄分局', item['管轄分局']);
+    if (checkValid(item['緯度']) && checkValid(item['經度'])) text += `座標：${String(item['緯度']).trim()}, ${String(item['經度']).trim()}\n`;
+    return text.trimEnd();
+  }
+
   return buildFoodPublishText(item);
 }
 
@@ -3084,6 +3116,7 @@ function stripTxtMetadata(content) {
 }
 
 function buildAiItemText(item, sourceSheet, mainCat = '', subCat = '') {
+  if (sourceSheet === '測速執法') return buildItemText(item, sourceSheet);   /* 只輸出文字 */
   const baseText = sourceSheet === '美食清單' ? buildFoodExportText(item)
     : buildItemText(item, sourceSheet, mainCat, subCat);
   return stripTxtMetadata(baseText)
@@ -3285,7 +3318,7 @@ function classifySearchToken(token, context) {
 }
 
 function getClauseAllowedSheets(clause, context) {
-  let allowed = new Set(clause.sheets.size ? clause.sheets : ALL_SHEETS);
+  let allowed = new Set(clause.sheets.size ? clause.sheets : [...ALL_SHEETS, ...GEN_EXTRA_SHEETS]);
   const restrict = choices => { allowed = new Set([...allowed].filter(sheet => choices.has(sheet))); };
   if (clause.mainCategories.length) {
     restrict(new Set(clause.mainCategories.flatMap(token => [...(context.mainCategorySheets.get(token) || [])])));
@@ -3772,8 +3805,9 @@ function displayResults() {
       const items = sheetName === sourceSheet ? allData : (allSheetsDataCache[sheetName] || []);
       keywordDatasets[sheetName] = sheetName === '美食清單' ? items.filter(isVisibleFoodItem) : items;
     }
+    if (!ALL_SHEETS.includes(sourceSheet)) keywordDatasets[sourceSheet] = allData;
     const presetSplit = splitPresetKeyword(kw);
-    if (presetSplit.presets.length) {
+    if (presetSplit.presets.length && ALL_SHEETS.includes(sourceSheet)) {
       keywordAllowed = new Set(runPresetKeyword(presetSplit, keywordDatasets)[sourceSheet] || []);
     } else {
       keywordContext = createSearchContext(keywordDatasets);
@@ -3802,14 +3836,14 @@ function displayResults() {
   });
 
   updateSheetCounts({ [sourceSheet]: filteredData });
-  if (!selectedSearchSheets.has(sourceSheet)) filteredData = [];
+  if (!sheetSelected(sourceSheet)) filteredData = [];
   document.getElementById('resultsSubHeading').textContent = `共 ${filteredData.length} 筆，下載僅輸出核選工作表中勾選的卡片`;
 
   if (filteredData.length === 0) {
     resetBackground();
     document.getElementById('downloadBtn').disabled = true;
     document.getElementById('batchControls').style.display = 'none';
-    if (!selectedSearchSheets.has(sourceSheet)) {
+    if (!sheetSelected(sourceSheet)) {
       container.innerHTML = `<div class="empty">請在進階工作表篩選核選「${escapeHtml(sourceSheet)}」。</div>`;
       setStatus(`請核選「${sourceSheet}」以顯示卡片。`, 'info');
     } else if (kw) {
@@ -3856,7 +3890,7 @@ function getSheetIndexGroups() {
     if (!groups.has(sheet)) groups.set(sheet, []);
     groups.get(sheet).push(index);
   });
-  return ALL_SHEETS.filter(sheet => groups.has(sheet)).map(sheet => [sheet, groups.get(sheet)]);
+  return [...ALL_SHEETS, ...GEN_EXTRA_SHEETS].filter(sheet => groups.has(sheet)).map(sheet => [sheet, groups.get(sheet)]);
 }
 function renderSheetSelectAll() {
   const box = document.getElementById('sheetSelectAllGroup');
@@ -3990,7 +4024,7 @@ function collectExportIndices() {
   const sheetOf = row => isSearchMode ? row._sourceSheet : document.getElementById('sourceSelect').value;
   const indices = new Set([...selectedIndices].filter(index => {
     const row = filteredData[index];
-    return row && selectedSearchSheets.has(sheetOf(row));
+    return row && sheetSelected(sheetOf(row));
   }));
   // 已核選景點／廟宇工作表但尚未挑選該類卡片時，使用目前篩選的該類卡片。
   // 若已挑選個別卡片，保留該類既有選擇；取消工作表核選或按該類「取消全選」即可整類排除。
@@ -4086,6 +4120,15 @@ function exportTXT() {
   
   /* 2. 一般下拉式篩選下載處理 */
   const sourceSheetForValidation = document.getElementById('sourceSelect').value; 
+  if (sourceSheetForValidation === '測速執法') {
+    const region = document.getElementById('regionSelect').value;
+    const parts = [document.getElementById('mainCatSelect').value, document.getElementById('subCatSelect').value ? `速限${document.getElementById('subCatSelect').value}` : ''].filter(Boolean);
+    const title = `澎湖測速、科技執法 - ${region}${parts.length ? ' ' + parts.join('-') : ''}`;
+    const body = exportRows.map(row => `${buildItemText(row, '測速執法')}\n----------------------------------------\n`).join('\n');
+    triggerDownload(`${title}\n\n${body}`, `澎湖_測速科技執法_${region}${parts.length ? '_' + parts.join('-') : ''}.txt`);
+    setStatus(`✅ 已下載測速、科技執法共 ${exportRows.length} 筆（文字）。`, 'success');
+    return;
+  }
   let valMainCat = document.getElementById('mainCatSelect').value;
   let valSubCat = document.getElementById('subCatSelect').value;
   if (sourceSheetForValidation === '景點') {
@@ -5473,7 +5516,7 @@ function loadGenerator() {
 /* 集章卡的雲端儲存／載入網址（系統設定「集章雲端網址」），由集章卡頁面讀取 */
 function stampCloudUrl() { return CFG.stampCloudUrl || ''; }
 /* 程式版本（顯示在集章選單，方便確認手機是否已更新到最新版） */
-const APP_VERSION = '2026-11-01-v1';
+const APP_VERSION = '2026-11-01-v2';
 function appVersion() { return APP_VERSION; }
 /* 集章卡的蓋章距離（公尺，系統設定「集章偵測範圍」，預設 50） */
 function stampRange() { const n = Number(String(CFG.stampRangeM || '').replace(/[^\d.]/g, '')); return n > 0 ? n : 50; }
