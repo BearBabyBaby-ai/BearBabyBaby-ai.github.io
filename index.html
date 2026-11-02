@@ -5639,7 +5639,7 @@ function loadGenerator() {
 /* 集章卡的雲端儲存／載入網址（系統設定「集章雲端網址」），由集章卡頁面讀取 */
 function stampCloudUrl() { return CFG.stampCloudUrl || ''; }
 /* 程式版本（顯示在集章選單，方便確認手機是否已更新到最新版） */
-const APP_VERSION = '2026-11-02-v4';
+const APP_VERSION = '2026-11-02-v5';
 function appVersion() { return APP_VERSION; }
 /* 集章卡的蓋章距離（公尺，系統設定「集章偵測範圍」，預設 50） */
 function stampRange() { const n = Number(String(CFG.stampRangeM || '').replace(/[^\d.]/g, '')); return n > 0 ? n : 50; }
@@ -6346,21 +6346,19 @@ const TideDesk = (() => {
   }
   /* ---------- 潮位趨勢圖：維持原本樣式，另可左右拖曳或輸入時間（24 小時制）查看潮高 ---------- */
   const hhmm = m => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(Math.round(m) % 60).padStart(2, '0')}`;
-  /* 依圖上實際畫出的曲線（貝茲曲線）求某個時間的潮位，讀值與曲線一致 */
+  /* 潮位模型：相鄰滿乾潮之間用半週期餘弦，與分合海時間的計算相同（calcTideTime 的反函數） */
+  function cosTideAt(ext, m) {
+    let i = ext.findIndex((p, k) => k < ext.length - 1 && m <= ext[k + 1].m);
+    if (i < 0) i = ext.length - 2;
+    const a = ext[i], b = ext[i + 1], span = (b.m - a.m) || 1;
+    return (a.h + b.h) / 2 + (a.h - b.h) / 2 * Math.cos(Math.PI * (m - a.m) / span);
+  }
+  /* 求某個時間的潮位（曲線也是同一模型逐點畫的，讀值與曲線一致） */
   function curveAt(c, minute) {
-    const pts = c.getDatasetMeta(0).data, xs = c.scales.x, ys = c.scales.y;
-    if (pts.length < 2) return null;
-    const px = xs.getPixelForValue(minute);
-    if (px < pts[0].x - 0.5 || px > pts[pts.length - 1].x + 0.5) return null;
-    let i = pts.findIndex((p, k) => k < pts.length - 1 && px <= pts[k + 1].x);
-    if (i < 0) i = pts.length - 2;
-    const a = pts[i], b = pts[i + 1];
-    const P = [[a.x, a.y], [a.cp2x ?? a.x, a.cp2y ?? a.y], [b.cp1x ?? b.x, b.cp1y ?? b.y], [b.x, b.y]];
-    const at = (t, k) => { const u = 1 - t; return u * u * u * P[0][k] + 3 * u * u * t * P[1][k] + 3 * u * t * t * P[2][k] + t * t * t * P[3][k]; };
-    let lo = 0, hi = 1;
-    for (let n = 0; n < 40; n++) { const mid = (lo + hi) / 2; if (at(mid, 0) < px) lo = mid; else hi = mid; }
-    const py = at((lo + hi) / 2, 1);
-    return { px, py, height: ys.getValueForPixel(py) };
+    const ext = c.$ext;
+    if (!ext || ext.length < 2 || minute < ext[0].m || minute > ext[ext.length - 1].m) return null;
+    const height = cosTideAt(ext, minute);
+    return { px: c.scales.x.getPixelForValue(minute), py: c.scales.y.getPixelForValue(height), height };
   }
   /* 原本樣式的提示框（黑底、時間＋潮位） */
   /* 趨勢圖標示：安全通行時段（綠色區塊）、日出／日沒（虛線） */
@@ -6441,8 +6439,8 @@ const TideDesk = (() => {
     const minute = parseHM($('tdTime').value);
     if (minute === null) { if ($('tdTime').value.trim()) msg.textContent = '請輸入 24 小時制時間，例如 09:40'; return; }
     if (!chart) return;
-    const pts = chart.getDatasetMeta(0).data.map(p => p.parsed?.x ?? chart.scales.x.getValueForPixel(p.x));
-    if (!curveAt(chart, minute)) { msg.textContent = pts.length ? `此時間不在曲線範圍（${hhmm(Math.min(...pts))}–${hhmm(Math.max(...pts))}）` : '這天沒有潮汐資料'; return; }
+    const ext = chart.$ext || [];
+    if (!curveAt(chart, minute)) { msg.textContent = ext.length ? `此時間不在曲線範圍（${hhmm(ext[0].m)}–${hhmm(ext[ext.length - 1].m)}）` : '這天沒有潮汐資料'; return; }
     chart.$pick = minute; chart.draw();
   }
   $('tdTimeGo').addEventListener('click', jumpToTime);
@@ -6455,9 +6453,17 @@ const TideDesk = (() => {
     if (typeof Chart === 'undefined' || isMobile()) return;
     if (chart) chart.destroy();
     const points = data.tides.map(t => ({ x: t.time.split(':').reduce((h, m) => h * 60 + +m, 0), y: t.height, tideType: t.type })).sort((a, b) => a.x - b.x);
+    const ext = points.map(p => ({ m: p.x, h: p.y })), curve = [];
+    if (ext.length >= 2) {
+      for (let m = ext[0].m; m < ext[ext.length - 1].m; m += 5) curve.push({ x: m, y: Math.round(cosTideAt(ext, m) * 10) / 10 });
+      curve.push({ x: ext[ext.length - 1].m, y: ext[ext.length - 1].h });
+    }
     chart = new Chart($('tdChart').getContext('2d'), {
       type: 'line',
-      data: { datasets: [{ label: '潮位', data: points, borderColor: '#900', backgroundColor: 'rgba(153,0,0,0.1)', fill: true, tension: 0.4, pointRadius: 8, pointHoverRadius: 10, pointBackgroundColor: points.map(p => p.tideType === '滿潮' ? '#d32f2f' : '#1976d2') }] },
+      data: { datasets: [
+        { label: '潮位', data: curve, borderColor: '#900', backgroundColor: 'rgba(153,0,0,0.1)', fill: true, tension: 0, pointRadius: 0, pointHoverRadius: 0, borderWidth: 3, datalabels: { display: false } },
+        { label: '滿乾潮', data: points, showLine: false, fill: false, pointRadius: 8, pointHoverRadius: 10, pointBackgroundColor: points.map(p => p.tideType === '滿潮' ? '#d32f2f' : '#1976d2'), borderColor: '#900' }
+      ] },
       options: {
         responsive: true, maintainAspectRatio: false, animation: false,
         events: ['mousemove', 'mouseout', 'mousedown', 'click', 'touchstart', 'touchmove'],
@@ -6470,6 +6476,7 @@ const TideDesk = (() => {
       },
       plugins: [marksPlugin, pickPlugin]
     });
+    chart.$ext = ext;
     /* 右下角資訊：安全通行、日出、日沒（奎壁山摩西分海才有） */
     const info = $('tdInfo');
     info.hidden = !(data.safetyList || data.sunrise);
