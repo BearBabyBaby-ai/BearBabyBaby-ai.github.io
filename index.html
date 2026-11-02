@@ -5625,7 +5625,7 @@ function loadGenerator() {
 /* 集章卡的雲端儲存／載入網址（系統設定「集章雲端網址」），由集章卡頁面讀取 */
 function stampCloudUrl() { return CFG.stampCloudUrl || ''; }
 /* 程式版本（顯示在集章選單，方便確認手機是否已更新到最新版） */
-const APP_VERSION = '2026-11-02-v2';
+const APP_VERSION = '2026-11-02-v3';
 function appVersion() { return APP_VERSION; }
 /* 集章卡的蓋章距離（公尺，系統設定「集章偵測範圍」，預設 50） */
 function stampRange() { const n = Number(String(CFG.stampRangeM || '').replace(/[^\d.]/g, '')); return n > 0 ? n : 50; }
@@ -6242,9 +6242,10 @@ function parseForecastRows(rows, blockIndex) {
     }
     if (!currentDay) return;
     const day = forecastStore[currentDay];
-    if (type && time.includes(':')) day.tides.push({ type, time, height: parseFloat(height) || 0 });
-    if (sep && sep.includes(':')) day.tags.push({ label: '緩慢分海', time: sep, type: 'sep' });
-    if (mer && mer.includes(':')) day.tags.push({ label: '緩慢合海', time: mer, type: 'mer' });
+    const hm = t => t.replace(/^(\d):/, '0$1:');   /* 時間一律 HH:MM（3:51 → 03:51） */
+    if (type && time.includes(':')) day.tides.push({ type, time: hm(time), height: parseFloat(height) || 0 });
+    if (sep && sep.includes(':')) day.tags.push({ label: '緩慢分海', time: hm(sep), type: 'sep' });
+    if (mer && mer.includes(':')) day.tags.push({ label: '緩慢合海', time: hm(mer), type: 'mer' });
   });
   renderForecastUI();
 }
@@ -6348,6 +6349,37 @@ const TideDesk = (() => {
     return { px, py, height: ys.getValueForPixel(py) };
   }
   /* 原本樣式的提示框（黑底、時間＋潮位） */
+  /* 趨勢圖標示：安全通行時段（綠色區塊）、日出／日沒（虛線） */
+  const toMin = t => { const m = String(t || '').match(/(\d{1,2}):(\d{2})/); return m ? +m[1] * 60 + +m[2] : null; };
+  const marksPlugin = {
+    id: 'tideMarks',
+    beforeDatasetsDraw(c) {
+      const marks = c.$marks;
+      if (!marks) return;
+      const ctx = c.ctx, area = c.chartArea, xs = c.scales.x;
+      ctx.save();
+      ctx.font = 'bold 11px "Noto Sans TC","Microsoft JhengHei",sans-serif';
+      ctx.textBaseline = 'top';
+      marks.safe.forEach(([a, b]) => {
+        const x1 = xs.getPixelForValue(a), x2 = xs.getPixelForValue(b);
+        ctx.fillStyle = 'rgba(16,185,129,0.16)'; ctx.fillRect(x1, area.top, x2 - x1, area.bottom - area.top);
+        ctx.strokeStyle = 'rgba(16,185,129,0.7)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(x1, area.top); ctx.lineTo(x1, area.bottom); ctx.moveTo(x2, area.top); ctx.lineTo(x2, area.bottom); ctx.stroke();
+        ctx.fillStyle = '#047857'; ctx.textAlign = 'center';
+        ctx.fillText(`安全通行 ${hhmm(a)}–${hhmm(b)}`, (x1 + x2) / 2, area.bottom - 16);
+      });
+      [[marks.sunrise, '日出', '#d97706'], [marks.sunset, '日沒', '#7c3aed']].forEach(([m, label, color]) => {
+        if (m == null) return;
+        const x = xs.getPixelForValue(m);
+        ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.setLineDash([5, 4]);
+        ctx.beginPath(); ctx.moveTo(x, area.top); ctx.lineTo(x, area.bottom); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = color; ctx.textAlign = x > area.right - 70 ? 'right' : 'left';
+        ctx.fillText(`${label} ${hhmm(m)}`, x + (ctx.textAlign === 'right' ? -4 : 4), area.top + 4);
+      });
+      ctx.restore();
+    }
+  };
   const pickPlugin = {
     id: 'tidePick',
     afterEvent(c, args) {
@@ -6424,8 +6456,14 @@ const TideDesk = (() => {
           tooltip: { enabled: false }
         }
       },
-      plugins: [pickPlugin]
+      plugins: [marksPlugin, pickPlugin]
     });
+    /* 奎壁山摩西分海才有安全通行與日出日沒資料 */
+    chart.$marks = data.safetyList || data.sunrise ? {
+      safe: (data.safetyList || []).map(s => s.split(/[-~～–]/).map(toMin)).filter(([a, b]) => a != null && b != null && b > a),
+      sunrise: toMin(data.sunrise), sunset: toMin(data.sunset)
+    } : null;
+    chart.draw();
     if (parseHM($('tdTime').value) !== null) jumpToTime();   /* 換日期時沿用輸入的時間 */
   }
   /* 奎壁山分海：分海資料（月份可選） */
@@ -6442,7 +6480,8 @@ const TideDesk = (() => {
         note: `🌅 日出 ${info.sunrise} │ 🌇 日沒 ${info.sunset}`,
         tags: info.points.filter(p => p.type === 'sep' || p.type === 'mer').map(p => ({ label: p.label, time: p.t, type: p.type })),
         tides: info.points.filter(p => p.type === 'hi' || p.type === 'lo').map(p => ({ type: p.label, time: p.t, height: p.h })),
-        safety: info.safety.join('、')
+        safety: info.safety.join('、'),
+        sunrise: info.sunrise, sunset: info.sunset, safetyList: info.safety   /* 趨勢圖標示用 */
       };
       days.push(date);
     });
