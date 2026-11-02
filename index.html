@@ -356,6 +356,17 @@
     #view-tide .safety-list{background:#ecfdf5;border-left:4px solid #10b981;border-radius:9px;color:#065f46}
     #view-tide .safety-list span+span:before{color:#6ee7b7}
 
+    /* 電腦版分海頁：潮汐預報版面（手機版維持原本的分海卡片） */
+    #view-tide .tide-desk{display:none}
+    .f-card-safety{font-size:.85rem;color:#065f46;background:#ecfdf5;border-left:4px solid #10b981;border-radius:6px;padding:6px 10px;margin-top:6px}
+    @media(min-width:821px){
+      .app-nav .nav-btn[data-go="forecast"]{display:none}
+      #view-tide{overflow:hidden}
+      #view-tide .page{height:100%;display:flex;flex-direction:column;padding-bottom:12px}
+      #view-tide .tide-mobile{display:none}
+      #view-tide .tide-desk{display:flex;flex-direction:column;flex:1;min-height:0}
+    }
+
     /* =====================================================================
        未來 30 天潮汐預報
        ===================================================================== */
@@ -917,9 +928,35 @@
     <section class="view" id="view-tide" aria-label="奎壁山摩西分海" hidden>
       <div class="page wide">
         <div class="page-head"><h2>奎壁山摩西分海</h2><p>北寮奎壁山分海時間參考</p></div>
-        <div class="tide-toolbar"><label for="tideMonth">選擇查詢月份</label><select id="tideMonth"></select></div>
-        <div id="tideStatus" class="tide-status">尚未載入分海資料</div>
-        <div id="tideDays" class="tide-days"></div>
+        <div class="tide-mobile">
+          <div class="tide-toolbar"><label for="tideMonth">選擇查詢月份</label><select id="tideMonth"></select></div>
+          <div id="tideStatus" class="tide-status">尚未載入分海資料</div>
+          <div id="tideDays" class="tide-days"></div>
+        </div>
+        <!-- 電腦版：奎壁山分海改用 30 天潮汐預報的版面，並可切換各區域潮汐預報 -->
+        <div class="tide-desk">
+          <div class="tide-toolbar">
+            <label for="tdPlace">地點：</label>
+            <select id="tdPlace">
+              <option value="kb">奎壁山分海</option>
+              <option value="馬公">馬公潮汐</option>
+              <option value="湖西">湖西潮汐</option>
+              <option value="白沙">白沙潮汐</option>
+              <option value="西嶼">西嶼潮汐</option>
+              <option value="望安">望安潮汐</option>
+              <option value="七美">七美潮汐</option>
+            </select>
+            <span id="tdMonthWrap"><label for="tdMonth">月份：</label><select id="tdMonth"></select></span>
+            <span id="tdLoading" style="display:none;color:#075985;font-weight:bold;margin-left:10px;">數據載入中...</span>
+          </div>
+          <div class="forecast-container">
+            <div class="forecast-list" id="tdList"><div class="empty">尚未載入分海資料</div></div>
+            <div class="forecast-chart-panel">
+              <h4 id="tdChartTitle" style="text-align:center;margin:0 0 10px 0;color:#334155;">請選擇日期</h4>
+              <div style="height:380px;"><canvas id="tdChart"></canvas></div>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -5535,6 +5572,7 @@ let currentView = '';
 const MOBILE_MQ = window.matchMedia('(max-width:820px)');
 function viewAllowed(view) { return MOBILE_MQ.matches ? view !== 'gen' : view !== 'stamp'; }
 function showView(view) {
+  if (view === 'forecast' && !MOBILE_MQ.matches) view = 'tide';   /* 電腦版：30 天潮汐預報已併入分海頁 */
   if (!VIEWS.includes(view) || !viewAllowed(view)) view = 'home';
   currentView = view;
   VIEWS.forEach(v => { $(`view-${v}`).hidden = v !== view; });
@@ -5545,7 +5583,7 @@ function showView(view) {
   });
   if (view === 'map') onMapShown();
   if (view === 'events') { Events.render(); Lantern.render(); }
-  if (view === 'tide') loadTideData();
+  if (view === 'tide') { loadTideData(); TideDesk.onShown(); }
   if (view === 'forecast') onForecastShown();
   if (view === 'flight') Flights.onShown();
   if (view === 'calendar') Cal.onShown();
@@ -5573,7 +5611,7 @@ function loadGenerator() {
 /* 集章卡的雲端儲存／載入網址（系統設定「集章雲端網址」），由集章卡頁面讀取 */
 function stampCloudUrl() { return CFG.stampCloudUrl || ''; }
 /* 程式版本（顯示在集章選單，方便確認手機是否已更新到最新版） */
-const APP_VERSION = '2026-11-01-v11';
+const APP_VERSION = '2026-11-02-v0';
 function appVersion() { return APP_VERSION; }
 /* 集章卡的蓋章距離（公尺，系統設定「集章偵測範圍」，預設 50） */
 function stampRange() { const n = Number(String(CFG.stampRangeM || '').replace(/[^\d.]/g, '')); return n > 0 ? n : 50; }
@@ -6103,7 +6141,7 @@ function loadTideData() {
   tideStatus.textContent = '正在讀取奎壁山分海資料…';
   parseTideCsv(`https://docs.google.com/spreadsheets/d/${CFG.tideSheetId}/gviz/tq?tqx=out:csv&gid=${HUB_GIDS.tide}&_=${Date.now()}`,
     () => parseTideCsv(`https://docs.google.com/spreadsheets/d/${CFG.tideSheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent('奎壁山摩西分海')}&_=${Date.now()}`,
-      () => { tideLoading = false; tideStatus.textContent = '分海資料讀取失敗，請重新整理後再試'; Home.renderTide(true); }));
+      () => { tideLoading = false; tideStatus.textContent = '分海資料讀取失敗，請重新整理後再試'; $('tdList').innerHTML = '<div class="empty">分海資料讀取失敗，請重新整理後再試</div>'; Home.renderTide(true); }));
 }
 function parseTideCsv(url, onFail) {
   Papa.parse(url, {
@@ -6121,6 +6159,7 @@ function parseTideCsv(url, onFail) {
       tideMonth.innerHTML = months.map(m => `<option value="${esc(m)}">${esc(m.replace('/', '年'))}月</option>`).join('');
       tideLoaded = true;
       if (months.length) renderTideMonth(months[0]); else tideStatus.textContent = '目前沒有可顯示的分海資料';
+      TideDesk.refresh();
       Home.renderTide();
       Cal.renderDetail();
     },
@@ -6246,6 +6285,110 @@ function onForecastShown() {
   if (!forecastLoaded) { forecastLoaded = true; loadForecastData($('forecastRegion').value); }
   else if (forecastChartInstance) setTimeout(() => forecastChartInstance.resize(), 50);
 }
+
+/* =====================================================================
+   電腦版分海頁：奎壁山分海用 30 天潮汐預報的版面（日期清單＋潮位趨勢圖），
+   地點可切換到各區域的 30 天潮汐預報
+   ===================================================================== */
+const TideDesk = (() => {
+  const place = $('tdPlace'), month = $('tdMonth'), list = $('tdList'), loading = $('tdLoading');
+  let chart = null, store = {}, days = [], request = 0;
+  const WEEK = ['日', '一', '二', '三', '四', '五', '六'];
+  const weekOf = date => { const d = new Date(date.replace(/\//g, '-') + 'T00:00:00'); return Number.isNaN(d.getTime()) ? '' : `（${WEEK[d.getDay()]}）`; };
+  function cardHtml(d) {
+    const data = store[d];
+    const tideHtml = `<div class="f-tide-container">${data.tides.map(t => `<div class="f-tide-row ${t.type === '滿潮' ? 'high' : 'low'}"><span>${esc(t.type)}</span><span style="font-weight:bold">${esc(t.time)}</span><span style="text-align:right;font-weight:bold;font-family:monospace">${t.height}</span><span>cm</span></div>`).join('')}${data.safety ? `<div class="f-card-safety">安全通行參考：${esc(data.safety)}</div>` : ''}</div>`;
+    const tagHtml = !data.tags.length ? '' : `<div class="f-status-tags">${data.tags.map(tag => `<span class="f-tag-pill ${tag.type === 'mer' ? 'f-bg-mer' : 'f-bg-sep'}">${tag.label} ${esc(tag.time)}</span>`).join('')}</div>`;
+    const note = data.note ? `<div class="f-card-note">${esc(data.note)}</div>` : '';
+    return `<div class="f-card" data-day="${esc(d)}"><div class="f-card-header">${esc(data.title || d)}</div>${note}${tagHtml}${tideHtml}</div>`;
+  }
+  function render(emptyText) {
+    list.innerHTML = days.length ? days.map(cardHtml).join('') : `<div class="empty">${emptyText || '目前沒有資料'}</div>`;
+    const today = getISODate(new Date()), kbToday = today.replace(/-/g, '/'), md = today.slice(5).replace('-', '/'), mdLoose = md.replace(/^0/, '').replace('/0', '/');
+    const cards = [...list.querySelectorAll('.f-card')];
+    const target = cards.find(c => c.dataset.day === kbToday || c.dataset.day.includes(md) || c.dataset.day.includes(mdLoose)) || cards[0];
+    if (target) { select(target); list.scrollTo({ top: target.offsetTop - list.offsetTop - 5 }); }
+    else { $('tdChartTitle').innerText = '請選擇日期'; if (chart) { chart.destroy(); chart = null; } }
+  }
+  function select(card) {
+    list.querySelectorAll('.f-card.active').forEach(c => c.classList.remove('active'));
+    card.classList.add('active');
+    drawChart(card.dataset.day);
+  }
+  function drawChart(day) {
+    const data = store[day];
+    if (!data) return;
+    $('tdChartTitle').innerText = `${data.title || day} 潮位趨勢圖`;
+    if (typeof Chart === 'undefined' || isMobile()) return;
+    if (chart) chart.destroy();
+    const points = data.tides.map(t => ({ x: t.time.split(':').reduce((h, m) => h * 60 + +m, 0), y: t.height, tideType: t.type })).sort((a, b) => a.x - b.x);
+    chart = new Chart($('tdChart').getContext('2d'), {
+      type: 'line',
+      data: { datasets: [{ label: '潮位', data: points, borderColor: '#900', backgroundColor: 'rgba(153,0,0,0.1)', fill: true, tension: 0.4, pointRadius: 8, pointHoverRadius: 10, pointBackgroundColor: points.map(p => p.tideType === '滿潮' ? '#d32f2f' : '#1976d2') }] },
+      options: {
+        responsive: true, maintainAspectRatio: false, animation: false,
+        scales: { x: { type: 'linear', min: 0, max: 1440, ticks: { stepSize: 120, callback: v => `${Math.floor(v / 60)}:00` }, title: { display: true, text: '時間' } }, y: { title: { display: true, text: '潮位 (cm)' } } },
+        plugins: {
+          legend: { display: false },
+          datalabels: { align: 'top', offset: 5, color: '#334155', font: { weight: 'bold', size: 12 }, formatter: v => `${v.tideType}\n${v.y}` },
+          tooltip: { callbacks: { title: items => { const min = items[0].raw.x; return `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`; } } }
+        }
+      }
+    });
+  }
+  /* 奎壁山分海：分海資料（月份可選） */
+  function showKuibi() {
+    $('tdMonthWrap').hidden = false;
+    if (!tideLoaded) { list.innerHTML = '<div class="empty">正在讀取奎壁山分海資料…</div>'; return; }
+    const keep = month.value;
+    month.innerHTML = tideMonth.innerHTML;
+    if ([...month.options].some(o => o.value === keep)) month.value = keep;
+    store = {}; days = [];
+    [...new Set(tideRows.filter(x => x.date.startsWith(month.value)).map(x => x.date))].sort().forEach(date => {
+      const info = tideDayInfo(date);
+      store[date] = {
+        title: `${date}${weekOf(date)}`,
+        note: `🌅 日出 ${info.sunrise} │ 🌇 日沒 ${info.sunset}`,
+        tags: info.points.filter(p => p.type === 'sep' || p.type === 'mer').map(p => ({ label: p.label, time: p.t, type: p.type })),
+        tides: info.points.filter(p => p.type === 'hi' || p.type === 'lo').map(p => ({ type: p.label, time: p.t, height: p.h })),
+        safety: info.safety.join('、')
+      };
+      days.push(date);
+    });
+    render('此月份暫無分海資料');
+  }
+  /* 各區域：30 天潮汐預報 */
+  async function showRegion(region) {
+    $('tdMonthWrap').hidden = true;
+    const req = ++request;
+    loading.style.display = 'inline';
+    try {
+      if (!forecastRows) forecastRows = await fetchForecastRows();
+      if (req !== request || place.value !== region) return;
+      forecastStore = {}; forecastDateList = [];
+      parseForecastRows(forecastRows, FORECAST_REGIONS.indexOf(region));
+      store = forecastStore; days = forecastDateList.slice();
+      render('此區域目前沒有預報資料');
+    } catch (e) {
+      if (req === request) list.innerHTML = '<div class="empty">預報讀取錯誤，請檢查網路後重新整理。</div>';
+    } finally {
+      if (req === request) loading.style.display = 'none';
+    }
+  }
+  function refresh() {
+    if (place.value === 'kb') { ++request; loading.style.display = 'none'; showKuibi(); }
+    else showRegion(place.value);
+  }
+  place.addEventListener('change', refresh);
+  month.addEventListener('change', () => { if (place.value === 'kb') showKuibi(); });
+  list.addEventListener('click', e => { const card = e.target.closest('.f-card'); if (card && !card.classList.contains('active')) select(card); });
+  function onShown() {
+    if (isMobile()) return;
+    if (place.value === 'kb' ? tideLoaded && !days.length : !days.length) refresh();
+    else if (chart) setTimeout(() => chart.resize(), 50);
+  }
+  return { refresh, onShown };
+})();
 
 /* =====================================================================
    澎湖機場即時航班（原 v11 即時 HEX 驗證版，功能維持不變）
