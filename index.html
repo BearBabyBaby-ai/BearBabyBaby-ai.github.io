@@ -374,10 +374,6 @@
     .td-info .safe{border-left:5px solid #10b981}.td-info .safe b{color:#047857}
     .td-info .rise{border-left:5px solid #d97706}.td-info .rise b{color:#b45309}
     .td-info .set{border-left:5px solid #7c3aed}.td-info .set b{color:#6d28d9}
-    .td-time{display:flex;align-items:center;justify-content:center;gap:8px;margin:0 0 10px;font-size:.88rem;color:#334155;font-weight:700;flex-wrap:wrap}
-    .td-time input{width:96px;border:1px solid #cfe1e6;border-radius:8px;padding:6px 8px;font:inherit;text-align:center}
-    .td-time button{border:0;border-radius:8px;background:#0b3954;color:#fff;padding:7px 14px;font-weight:800;cursor:pointer}
-    #tdTimeMsg{color:#b91c1c;font-size:.82rem}
     .f-card-safety{font-size:.85rem;color:#065f46;background:#ecfdf5;border-left:4px solid #10b981;border-radius:6px;padding:6px 10px;margin-top:6px}
     @media(min-width:821px){
       .app-nav .nav-btn[data-go="forecast"]{display:none}
@@ -978,7 +974,6 @@
             <div class="td-right">
             <div class="forecast-chart-panel">
               <h4 id="tdChartTitle" style="text-align:center;margin:0 0 10px 0;color:#334155;">請選擇日期</h4>
-              <div class="td-time"><label for="tdTime">查詢時間（24小時制）</label><input id="tdTime" type="text" inputmode="numeric" maxlength="5" placeholder="例如 09:40" autocomplete="off"><button type="button" id="tdTimeGo">查詢</button><span id="tdTimeMsg"></span></div>
               <div class="td-canvas"><canvas id="tdChart"></canvas></div>
             </div>
             <div id="tdInfo" class="td-info" hidden></div>
@@ -5639,7 +5634,7 @@ function loadGenerator() {
 /* 集章卡的雲端儲存／載入網址（系統設定「集章雲端網址」），由集章卡頁面讀取 */
 function stampCloudUrl() { return CFG.stampCloudUrl || ''; }
 /* 程式版本（顯示在集章選單，方便確認手機是否已更新到最新版） */
-const APP_VERSION = '2026-11-02-v6';
+const APP_VERSION = '2026-11-02-v7';
 function appVersion() { return APP_VERSION; }
 /* 集章卡的蓋章距離（公尺，系統設定「集章偵測範圍」，預設 50） */
 function stampRange() { const n = Number(String(CFG.stampRangeM || '').replace(/[^\d.]/g, '')); return n > 0 ? n : 50; }
@@ -6345,7 +6340,7 @@ const TideDesk = (() => {
     card.classList.add('active');
     drawChart(card.dataset.day);
   }
-  /* ---------- 潮位趨勢圖：維持原本樣式，另可左右拖曳或輸入時間（24 小時制）查看潮高 ---------- */
+  /* ---------- 潮位趨勢圖：維持原本樣式，另可左右拖曳查看潮高 ---------- */
   const hhmm = m => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(Math.round(m) % 60).padStart(2, '0')}`;
   /* 潮位模型：相鄰滿乾潮之間用半週期餘弦，與分合海時間的計算相同（calcTideTime 的反函數） */
   function cosTideAt(ext, m) {
@@ -6426,26 +6421,6 @@ const TideDesk = (() => {
       ctx.restore();
     }
   };
-  /* 手動輸入時間：09:40、9:40、0940 都可以 */
-  function parseHM(text) {
-    const s = String(text || '').trim().replace(/[：.]/g, ':');
-    const m = s.match(/^(\d{1,2}):?(\d{2})$/);
-    if (!m) return null;
-    const h = +m[1], mi = +m[2];
-    return h < 24 && mi < 60 ? h * 60 + mi : null;
-  }
-  function jumpToTime() {
-    const msg = $('tdTimeMsg');
-    msg.textContent = '';
-    const minute = parseHM($('tdTime').value);
-    if (minute === null) { if ($('tdTime').value.trim()) msg.textContent = '請輸入 24 小時制時間，例如 09:40'; return; }
-    if (!chart) return;
-    const range = chart.$range;
-    if (!curveAt(chart, minute)) { msg.textContent = range ? `此時間不在曲線範圍（${hhmm(range[0])}–${hhmm(range[1])}）` : '這天沒有潮汐資料'; return; }
-    chart.$pick = minute; chart.draw();
-  }
-  $('tdTimeGo').addEventListener('click', jumpToTime);
-  $('tdTime').addEventListener('keydown', e => { if (e.key === 'Enter') jumpToTime(); });
   /* 前後天的滿乾潮：前一天取最後一筆、隔天取第一筆；沒有前後天資料時，曲線就停在當天第一筆／最後一筆 */
   const tideOf = t => ({ m: String(t.time).split(':').reduce((h, m) => h * 60 + +m, 0), h: t.height });
   function shiftDate(date, n) {
@@ -6475,7 +6450,6 @@ const TideDesk = (() => {
     const data = store[day];
     if (!data) return;
     $('tdChartTitle').innerText = `${data.title || day} 潮位趨勢圖`;
-    $('tdTimeMsg').textContent = '';
     if (typeof Chart === 'undefined' || isMobile()) return;
     if (chart) chart.destroy();
     const points = data.tides.map(t => ({ x: t.time.split(':').reduce((h, m) => h * 60 + +m, 0), y: t.height, tideType: t.type })).sort((a, b) => a.x - b.x);
@@ -6517,7 +6491,6 @@ const TideDesk = (() => {
       sunrise: toMin(data.sunrise), sunset: toMin(data.sunset)
     } : null;
     chart.draw();
-    if (parseHM($('tdTime').value) !== null) jumpToTime();   /* 換日期時沿用輸入的時間 */
   }
   /* 奎壁山分海：分海資料（月份可選） */
   function showKuibi() {
