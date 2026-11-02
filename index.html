@@ -5639,7 +5639,7 @@ function loadGenerator() {
 /* 集章卡的雲端儲存／載入網址（系統設定「集章雲端網址」），由集章卡頁面讀取 */
 function stampCloudUrl() { return CFG.stampCloudUrl || ''; }
 /* 程式版本（顯示在集章選單，方便確認手機是否已更新到最新版） */
-const APP_VERSION = '2026-11-02-v5';
+const APP_VERSION = '2026-11-02-v6';
 function appVersion() { return APP_VERSION; }
 /* 集章卡的蓋章距離（公尺，系統設定「集章偵測範圍」，預設 50） */
 function stampRange() { const n = Number(String(CFG.stampRangeM || '').replace(/[^\d.]/g, '')); return n > 0 ? n : 50; }
@@ -6128,7 +6128,7 @@ function applyMapSettings() {
    奎壁山分海
    ===================================================================== */
 const tideDays = $('tideDays'), tideStatus = $('tideStatus'), tideMonth = $('tideMonth');
-let tideRows = [], tideLoaded = false, tideLoading = false, dynamicThreshold = 3.75;
+let tideRows = [], tideAllRows = [], tideLoaded = false, tideLoading = false, dynamicThreshold = 3.75;
 const tideToMinutes = t => { if (!t || !String(t).includes(':')) return 0; const [h, m] = String(t).split(':').map(Number); return h * 60 + m; };
 const minutesToTide = m => { m = Math.max(0, Math.min(1439, Math.round(m))); return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`; };
 function calcTideTime(t1, h1, t2, h2, target) {
@@ -6181,6 +6181,7 @@ function parseTideCsv(url, onFail) {
       tideLoading = false;
       if (Number.isFinite(threshold) && threshold > 0) dynamicThreshold = threshold;
       const now = new Date(), today = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}`;
+      tideAllRows = parsed;   /* 電腦版趨勢圖補前一天潮汐用 */
       tideRows = parsed.filter(x => x.date >= today);
       if (!tideRows.length) tideRows = parsed;
       const months = [...new Set(tideRows.map(x => x.date.substring(0, 7)))].sort();
@@ -6355,8 +6356,8 @@ const TideDesk = (() => {
   }
   /* 求某個時間的潮位（曲線也是同一模型逐點畫的，讀值與曲線一致） */
   function curveAt(c, minute) {
-    const ext = c.$ext;
-    if (!ext || ext.length < 2 || minute < ext[0].m || minute > ext[ext.length - 1].m) return null;
+    const ext = c.$ext, range = c.$range;
+    if (!ext || ext.length < 2 || !range || minute < range[0] || minute > range[1]) return null;
     const height = cosTideAt(ext, minute);
     return { px: c.scales.x.getPixelForValue(minute), py: c.scales.y.getPixelForValue(height), height };
   }
@@ -6396,7 +6397,7 @@ const TideDesk = (() => {
       const e = args.event, area = c.chartArea;
       if (!['mousemove', 'mousedown', 'click', 'touchstart', 'touchmove'].includes(e.type)) return;
       if (e.x < area.left || e.x > area.right || e.y < area.top || e.y > area.bottom) return;
-      const minute = Math.max(0, Math.min(1439, Math.round(c.scales.x.getValueForPixel(e.x))));
+      const minute = Math.max(0, Math.min(1440, Math.round(c.scales.x.getValueForPixel(e.x))));
       if (!curveAt(c, minute)) return;
       c.$pick = minute; args.changed = true;
     },
@@ -6439,12 +6440,37 @@ const TideDesk = (() => {
     const minute = parseHM($('tdTime').value);
     if (minute === null) { if ($('tdTime').value.trim()) msg.textContent = '請輸入 24 小時制時間，例如 09:40'; return; }
     if (!chart) return;
-    const ext = chart.$ext || [];
-    if (!curveAt(chart, minute)) { msg.textContent = ext.length ? `此時間不在曲線範圍（${hhmm(ext[0].m)}–${hhmm(ext[ext.length - 1].m)}）` : '這天沒有潮汐資料'; return; }
+    const range = chart.$range;
+    if (!curveAt(chart, minute)) { msg.textContent = range ? `此時間不在曲線範圍（${hhmm(range[0])}–${hhmm(range[1])}）` : '這天沒有潮汐資料'; return; }
     chart.$pick = minute; chart.draw();
   }
   $('tdTimeGo').addEventListener('click', jumpToTime);
   $('tdTime').addEventListener('keydown', e => { if (e.key === 'Enter') jumpToTime(); });
+  /* 前後天的滿乾潮：前一天取最後一筆、隔天取第一筆；沒有前後天資料時，曲線就停在當天第一筆／最後一筆 */
+  const tideOf = t => ({ m: String(t.time).split(':').reduce((h, m) => h * 60 + +m, 0), h: t.height });
+  function shiftDate(date, n) {
+    const d = new Date(date.replace(/\//g, '-') + 'T00:00:00');
+    d.setDate(d.getDate() + n);
+    return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+  }
+  function kbDayExt(date) {
+    return tideAllRows.filter(x => x.date === date && x.time && Number.isFinite(x.height)).map(x => ({ m: tideToMinutes(x.time), h: x.height })).sort((a, b) => a.m - b.m);
+  }
+  const mdOf = key => { const m = String(key).match(/(\d{1,2})\/(\d{1,2})/); return m ? [+m[1], +m[2]] : null; };
+  function isNextDay(a, b) {   /* 30 天預報的日期只有月／日 */
+    const p = mdOf(a), q = mdOf(b);
+    if (!p || !q) return false;
+    return [2023, 2024].some(y => { const d = new Date(y, p[0] - 1, p[1] + 1); return d.getMonth() + 1 === q[0] && d.getDate() === q[1]; });
+  }
+  function neighbours(day) {
+    if (mode === 'kb') {
+      const prev = kbDayExt(shiftDate(day, -1)), next = kbDayExt(shiftDate(day, 1));
+      return { prev: prev[prev.length - 1] || null, next: next[0] || null };
+    }
+    const i = days.indexOf(day), pDay = days[i - 1], nDay = days[i + 1];
+    const pick = (key, last) => { const t = (store[key]?.tides || []).map(tideOf).sort((a, b) => a.m - b.m); return t.length ? t[last ? t.length - 1 : 0] : null; };
+    return { prev: pDay && isNextDay(pDay, day) ? pick(pDay, true) : null, next: nDay && isNextDay(day, nDay) ? pick(nDay, false) : null };
+  }
   function drawChart(day) {
     const data = store[day];
     if (!data) return;
@@ -6453,10 +6479,14 @@ const TideDesk = (() => {
     if (typeof Chart === 'undefined' || isMobile()) return;
     if (chart) chart.destroy();
     const points = data.tides.map(t => ({ x: t.time.split(':').reduce((h, m) => h * 60 + +m, 0), y: t.height, tideType: t.type })).sort((a, b) => a.x - b.x);
-    const ext = points.map(p => ({ m: p.x, h: p.y })), curve = [];
-    if (ext.length >= 2) {
-      for (let m = ext[0].m; m < ext[ext.length - 1].m; m += 5) curve.push({ x: m, y: Math.round(cosTideAt(ext, m) * 10) / 10 });
-      curve.push({ x: ext[ext.length - 1].m, y: ext[ext.length - 1].h });
+    const own = points.map(p => ({ m: p.x, h: p.y })), near = neighbours(day), curve = [];
+    const ext = [...(near.prev ? [{ m: near.prev.m - 1440, h: near.prev.h }] : []), ...own, ...(near.next ? [{ m: near.next.m + 1440, h: near.next.h }] : [])];
+    const range = own.length && ext.length >= 2 ? [near.prev ? 0 : own[0].m, near.next ? 1440 : own[own.length - 1].m] : null;
+    if (range) {
+      const xs = new Set(own.map(p => p.m).filter(m => m >= range[0] && m <= range[1]));
+      for (let m = Math.ceil(range[0] / 5) * 5; m < range[1]; m += 5) xs.add(m);
+      xs.add(range[0]); xs.add(range[1]);
+      [...xs].sort((a, b) => a - b).forEach(m => curve.push({ x: m, y: Math.round(cosTideAt(ext, m) * 10) / 10 }));
     }
     chart = new Chart($('tdChart').getContext('2d'), {
       type: 'line',
@@ -6476,7 +6506,7 @@ const TideDesk = (() => {
       },
       plugins: [marksPlugin, pickPlugin]
     });
-    chart.$ext = ext;
+    chart.$ext = ext; chart.$range = range;
     /* 右下角資訊：安全通行、日出、日沒（奎壁山摩西分海才有） */
     const info = $('tdInfo');
     info.hidden = !(data.safetyList || data.sunrise);
