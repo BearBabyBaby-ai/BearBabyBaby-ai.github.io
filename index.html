@@ -363,6 +363,17 @@
     .td-mode-btn{flex:0 0 auto;border:1px solid #cfe1e6;background:#fff;color:#24485a;border-radius:12px;padding:10px 16px;font-weight:900;font-size:.92rem;box-shadow:0 2px 6px rgba(7,43,75,.06);cursor:pointer}
     .td-mode-btn.active{background:#0b3954;border-color:#0b3954;color:#fff}
     @media(max-width:820px){.nav-btn .pc-only{display:none}.nav-btn .m-only{display:inline}}
+    .td-right{width:55%;display:flex;flex-direction:column;gap:12px;min-height:0;padding-bottom:2px}
+    .td-right .forecast-chart-panel{width:auto;align-self:stretch;flex:1;min-height:0;display:flex;flex-direction:column}
+    .td-canvas{position:relative;flex:1;min-height:240px;max-height:440px}
+    .td-info{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+    .td-info[hidden]{display:none}
+    .td-info div{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;box-shadow:0 4px 6px rgba(0,0,0,.05)}
+    .td-info b{display:block;font-size:.8rem;margin-bottom:4px}
+    .td-info span{font-size:1.05rem;font-weight:900;color:#1e293b}
+    .td-info .safe{border-left:5px solid #10b981}.td-info .safe b{color:#047857}
+    .td-info .rise{border-left:5px solid #d97706}.td-info .rise b{color:#b45309}
+    .td-info .set{border-left:5px solid #7c3aed}.td-info .set b{color:#6d28d9}
     .td-time{display:flex;align-items:center;justify-content:center;gap:8px;margin:0 0 10px;font-size:.88rem;color:#334155;font-weight:700;flex-wrap:wrap}
     .td-time input{width:96px;border:1px solid #cfe1e6;border-radius:8px;padding:6px 8px;font:inherit;text-align:center}
     .td-time button{border:0;border-radius:8px;background:#0b3954;color:#fff;padding:7px 14px;font-weight:800;cursor:pointer}
@@ -964,10 +975,13 @@
           </div>
           <div class="forecast-container">
             <div class="forecast-list" id="tdList"><div class="empty">尚未載入分海資料</div></div>
+            <div class="td-right">
             <div class="forecast-chart-panel">
               <h4 id="tdChartTitle" style="text-align:center;margin:0 0 10px 0;color:#334155;">請選擇日期</h4>
               <div class="td-time"><label for="tdTime">查詢時間（24小時制）</label><input id="tdTime" type="text" inputmode="numeric" maxlength="5" placeholder="例如 09:40" autocomplete="off"><button type="button" id="tdTimeGo">查詢</button><span id="tdTimeMsg"></span></div>
-              <div style="height:380px;"><canvas id="tdChart"></canvas></div>
+              <div class="td-canvas"><canvas id="tdChart"></canvas></div>
+            </div>
+            <div id="tdInfo" class="td-info" hidden></div>
             </div>
           </div>
         </div>
@@ -5625,7 +5639,7 @@ function loadGenerator() {
 /* 集章卡的雲端儲存／載入網址（系統設定「集章雲端網址」），由集章卡頁面讀取 */
 function stampCloudUrl() { return CFG.stampCloudUrl || ''; }
 /* 程式版本（顯示在集章選單，方便確認手機是否已更新到最新版） */
-const APP_VERSION = '2026-11-02-v3';
+const APP_VERSION = '2026-11-02-v4';
 function appVersion() { return APP_VERSION; }
 /* 集章卡的蓋章距離（公尺，系統設定「集章偵測範圍」，預設 50） */
 function stampRange() { const n = Number(String(CFG.stampRangeM || '').replace(/[^\d.]/g, '')); return n > 0 ? n : 50; }
@@ -6365,8 +6379,6 @@ const TideDesk = (() => {
         ctx.fillStyle = 'rgba(16,185,129,0.16)'; ctx.fillRect(x1, area.top, x2 - x1, area.bottom - area.top);
         ctx.strokeStyle = 'rgba(16,185,129,0.7)'; ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(x1, area.top); ctx.lineTo(x1, area.bottom); ctx.moveTo(x2, area.top); ctx.lineTo(x2, area.bottom); ctx.stroke();
-        ctx.fillStyle = '#047857'; ctx.textAlign = 'center';
-        ctx.fillText(`安全通行 ${hhmm(a)}–${hhmm(b)}`, (x1 + x2) / 2, area.bottom - 16);
       });
       [[marks.sunrise, '日出', '#d97706'], [marks.sunset, '日沒', '#7c3aed']].forEach(([m, label, color]) => {
         if (m == null) return;
@@ -6458,6 +6470,10 @@ const TideDesk = (() => {
       },
       plugins: [marksPlugin, pickPlugin]
     });
+    /* 右下角資訊：安全通行、日出、日沒（奎壁山摩西分海才有） */
+    const info = $('tdInfo');
+    info.hidden = !(data.safetyList || data.sunrise);
+    if (!info.hidden) info.innerHTML = `<div class="safe"><b>🟩 安全通行</b><span>${(data.safetyList || []).length ? data.safetyList.map(s => esc(s.replace(/-/g, '–'))).join('、') : '暫無資料'}</span></div><div class="rise"><b>🌅 日出</b><span>${esc(data.sunrise || '--:--')}</span></div><div class="set"><b>🌇 日沒</b><span>${esc(data.sunset || '--:--')}</span></div>`;
     /* 奎壁山摩西分海才有安全通行與日出日沒資料 */
     chart.$marks = data.safetyList || data.sunrise ? {
       safe: (data.safetyList || []).map(s => s.split(/[-~～–]/).map(toMin)).filter(([a, b]) => a != null && b != null && b > a),
