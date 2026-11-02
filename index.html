@@ -363,6 +363,10 @@
     .td-mode-btn{flex:0 0 auto;border:1px solid #cfe1e6;background:#fff;color:#24485a;border-radius:12px;padding:10px 16px;font-weight:900;font-size:.92rem;box-shadow:0 2px 6px rgba(7,43,75,.06);cursor:pointer}
     .td-mode-btn.active{background:#0b3954;border-color:#0b3954;color:#fff}
     @media(max-width:820px){.nav-btn .pc-only{display:none}.nav-btn .m-only{display:inline}}
+    .td-time{display:flex;align-items:center;justify-content:center;gap:8px;margin:0 0 10px;font-size:.88rem;color:#334155;font-weight:700;flex-wrap:wrap}
+    .td-time input{width:96px;border:1px solid #cfe1e6;border-radius:8px;padding:6px 8px;font:inherit;text-align:center}
+    .td-time button{border:0;border-radius:8px;background:#0b3954;color:#fff;padding:7px 14px;font-weight:800;cursor:pointer}
+    #tdTimeMsg{color:#b91c1c;font-size:.82rem}
     .f-card-safety{font-size:.85rem;color:#065f46;background:#ecfdf5;border-left:4px solid #10b981;border-radius:6px;padding:6px 10px;margin-top:6px}
     @media(min-width:821px){
       .app-nav .nav-btn[data-go="forecast"]{display:none}
@@ -962,6 +966,7 @@
             <div class="forecast-list" id="tdList"><div class="empty">尚未載入分海資料</div></div>
             <div class="forecast-chart-panel">
               <h4 id="tdChartTitle" style="text-align:center;margin:0 0 10px 0;color:#334155;">請選擇日期</h4>
+              <div class="td-time"><label for="tdTime">查詢時間（24小時制）</label><input id="tdTime" type="text" inputmode="numeric" maxlength="5" placeholder="例如 09:40" autocomplete="off"><button type="button" id="tdTimeGo">查詢</button><span id="tdTimeMsg"></span></div>
               <div style="height:380px;"><canvas id="tdChart"></canvas></div>
             </div>
           </div>
@@ -6324,80 +6329,104 @@ const TideDesk = (() => {
     card.classList.add('active');
     drawChart(card.dataset.day);
   }
-  /* 潮位曲線：相鄰滿乾潮之間用餘弦內插（頭尾沿用第一段／最後一段延伸），曲線與拖曳讀值一致 */
-  function tideAt(points, x) {
-    if (!points.length) return null;
-    if (points.length === 1) return points[0].y;
-    let i = points.findIndex((p, k) => k < points.length - 1 && x <= points[k + 1].x);
-    if (i < 0) i = points.length - 2;
-    const a = points[i], b = points[i + 1], span = b.x - a.x || 1;
-    return (a.y + b.y) / 2 + (a.y - b.y) / 2 * Math.cos(Math.PI * (x - a.x) / span);
-  }
+  /* ---------- 潮位趨勢圖：維持原本樣式，另可左右拖曳或輸入時間（24 小時制）查看潮高 ---------- */
   const hhmm = m => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(Math.round(m) % 60).padStart(2, '0')}`;
-  /* 左右拖曳（或滑過）曲線：顯示該時間與潮位高度 */
-  const dragPlugin = {
-    id: 'tideDrag',
+  /* 依圖上實際畫出的曲線（貝茲曲線）求某個時間的潮位，讀值與曲線一致 */
+  function curveAt(c, minute) {
+    const pts = c.getDatasetMeta(0).data, xs = c.scales.x, ys = c.scales.y;
+    if (pts.length < 2) return null;
+    const px = xs.getPixelForValue(minute);
+    if (px < pts[0].x - 0.5 || px > pts[pts.length - 1].x + 0.5) return null;
+    let i = pts.findIndex((p, k) => k < pts.length - 1 && px <= pts[k + 1].x);
+    if (i < 0) i = pts.length - 2;
+    const a = pts[i], b = pts[i + 1];
+    const P = [[a.x, a.y], [a.cp2x ?? a.x, a.cp2y ?? a.y], [b.cp1x ?? b.x, b.cp1y ?? b.y], [b.x, b.y]];
+    const at = (t, k) => { const u = 1 - t; return u * u * u * P[0][k] + 3 * u * u * t * P[1][k] + 3 * u * t * t * P[2][k] + t * t * t * P[3][k]; };
+    let lo = 0, hi = 1;
+    for (let n = 0; n < 40; n++) { const mid = (lo + hi) / 2; if (at(mid, 0) < px) lo = mid; else hi = mid; }
+    const py = at((lo + hi) / 2, 1);
+    return { px, py, height: ys.getValueForPixel(py) };
+  }
+  /* 原本樣式的提示框（黑底、時間＋潮位） */
+  const pickPlugin = {
+    id: 'tidePick',
     afterEvent(c, args) {
       const e = args.event, area = c.chartArea;
-      if (!['mousemove', 'mousedown', 'click', 'touchstart', 'touchmove', 'pointermove', 'pointerdown'].includes(e.type)) return;
-      if (e.x < area.left || e.x > area.right || e.y < area.top - 20 || e.y > area.bottom + 20) return;
-      c.$dragX = Math.max(0, Math.min(1439, c.scales.x.getValueForPixel(e.x)));
-      args.changed = true;
+      if (!['mousemove', 'mousedown', 'click', 'touchstart', 'touchmove'].includes(e.type)) return;
+      if (e.x < area.left || e.x > area.right || e.y < area.top || e.y > area.bottom) return;
+      const minute = Math.max(0, Math.min(1439, Math.round(c.scales.x.getValueForPixel(e.x))));
+      if (!curveAt(c, minute)) return;
+      c.$pick = minute; args.changed = true;
     },
-    afterDatasetsDraw(c) {
-      const x = c.$dragX, pts = c.$tidePoints;
-      if (x == null || !pts?.length) return;
-      const y = tideAt(pts, x), area = c.chartArea, ctx = c.ctx;
-      const px = c.scales.x.getPixelForValue(x), py = c.scales.y.getPixelForValue(y);
+    afterDraw(c) {
+      if (c.$pick == null) return;
+      const r = curveAt(c, c.$pick);
+      if (!r) return;
+      const ctx = c.ctx, area = c.chartArea, color = '#900';
       ctx.save();
-      ctx.strokeStyle = '#0b3954'; ctx.lineWidth = 1.5; ctx.setLineDash([5, 4]);
-      ctx.beginPath(); ctx.moveTo(px, area.top); ctx.lineTo(px, area.bottom); ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.fillStyle = '#fff'; ctx.strokeStyle = '#0b3954'; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.arc(px, py, 7, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-      const text = `${hhmm(x)}　潮位 ${Math.round(y)} cm`;
-      ctx.font = 'bold 14px "Noto Sans TC","Microsoft JhengHei",sans-serif';
-      const w = ctx.measureText(text).width + 20, hgt = 30;
-      let bx = px - w / 2; bx = Math.max(area.left, Math.min(area.right - w, bx));
-      const by = area.top + 4;
-      ctx.fillStyle = 'rgba(11,57,84,.92)';
-      ctx.beginPath(); ctx.roundRect ? ctx.roundRect(bx, by, w, hgt, 8) : ctx.rect(bx, by, w, hgt); ctx.fill();
-      ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(text, bx + w / 2, by + hgt / 2);
+      ctx.fillStyle = color; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(r.px, r.py, 8, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      const title = hhmm(c.$pick), body = `潮位: ${Math.round(r.height)}`;
+      ctx.font = 'bold 12px "Helvetica Neue",Helvetica,Arial,sans-serif';
+      const tw = ctx.measureText(title).width;
+      ctx.font = '12px "Helvetica Neue",Helvetica,Arial,sans-serif';
+      const bw = ctx.measureText(body).width + 16;
+      const w = Math.max(tw, bw) + 12, hgt = 44;
+      let bx = r.px + 12; if (bx + w > area.right) bx = r.px - 12 - w;
+      let by = r.py - hgt / 2; by = Math.max(area.top, Math.min(area.bottom - hgt, by));
+      ctx.fillStyle = 'rgba(0,0,0,0.8)';
+      ctx.beginPath(); ctx.roundRect ? ctx.roundRect(bx, by, w, hgt, 6) : ctx.rect(bx, by, w, hgt); ctx.fill();
+      ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 12px "Helvetica Neue",Helvetica,Arial,sans-serif'; ctx.fillText(title, bx + 6, by + 12);
+      ctx.fillStyle = color; ctx.fillRect(bx + 6, by + 25, 10, 10); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.strokeRect(bx + 6, by + 25, 10, 10);
+      ctx.fillStyle = '#fff'; ctx.font = '12px "Helvetica Neue",Helvetica,Arial,sans-serif'; ctx.fillText(body, bx + 22, by + 31);
       ctx.restore();
     }
   };
+  /* 手動輸入時間：09:40、9:40、0940 都可以 */
+  function parseHM(text) {
+    const s = String(text || '').trim().replace(/[：.]/g, ':');
+    const m = s.match(/^(\d{1,2}):?(\d{2})$/);
+    if (!m) return null;
+    const h = +m[1], mi = +m[2];
+    return h < 24 && mi < 60 ? h * 60 + mi : null;
+  }
+  function jumpToTime() {
+    const msg = $('tdTimeMsg');
+    msg.textContent = '';
+    const minute = parseHM($('tdTime').value);
+    if (minute === null) { if ($('tdTime').value.trim()) msg.textContent = '請輸入 24 小時制時間，例如 09:40'; return; }
+    if (!chart) return;
+    const pts = chart.getDatasetMeta(0).data.map(p => p.parsed?.x ?? chart.scales.x.getValueForPixel(p.x));
+    if (!curveAt(chart, minute)) { msg.textContent = pts.length ? `此時間不在曲線範圍（${hhmm(Math.min(...pts))}–${hhmm(Math.max(...pts))}）` : '這天沒有潮汐資料'; return; }
+    chart.$pick = minute; chart.draw();
+  }
+  $('tdTimeGo').addEventListener('click', jumpToTime);
+  $('tdTime').addEventListener('keydown', e => { if (e.key === 'Enter') jumpToTime(); });
   function drawChart(day) {
     const data = store[day];
     if (!data) return;
     $('tdChartTitle').innerText = `${data.title || day} 潮位趨勢圖`;
+    $('tdTimeMsg').textContent = '';
     if (typeof Chart === 'undefined' || isMobile()) return;
     if (chart) chart.destroy();
     const points = data.tides.map(t => ({ x: t.time.split(':').reduce((h, m) => h * 60 + +m, 0), y: t.height, tideType: t.type })).sort((a, b) => a.x - b.x);
-    const curve = [];
-    for (let x = 0; x <= 1440; x += 10) curve.push({ x, y: Math.round(tideAt(points, x) * 10) / 10 });
     chart = new Chart($('tdChart').getContext('2d'), {
       type: 'line',
-      data: { datasets: [
-        { label: '潮位', data: curve, borderColor: '#900', backgroundColor: 'rgba(153,0,0,0.1)', fill: true, tension: 0.3, pointRadius: 0, pointHoverRadius: 0, datalabels: { display: false } },
-        { label: '滿乾潮', data: points, showLine: false, fill: false, pointRadius: 8, pointHoverRadius: 8, pointBackgroundColor: points.map(p => p.tideType === '滿潮' ? '#d32f2f' : '#1976d2'), borderColor: '#fff' }
-      ] },
+      data: { datasets: [{ label: '潮位', data: points, borderColor: '#900', backgroundColor: 'rgba(153,0,0,0.1)', fill: true, tension: 0.4, pointRadius: 8, pointHoverRadius: 10, pointBackgroundColor: points.map(p => p.tideType === '滿潮' ? '#d32f2f' : '#1976d2') }] },
       options: {
         responsive: true, maintainAspectRatio: false, animation: false,
-        events: ['mousemove', 'mousedown', 'click', 'touchstart', 'touchmove'],
-        scales: { x: { type: 'linear', min: 0, max: 1440, ticks: { stepSize: 120, callback: v => `${Math.floor(v / 60)}:00` }, title: { display: true, text: '時間（左右拖曳查看潮位）' } }, y: { title: { display: true, text: '潮位 (cm)' } } },
+        events: ['mousemove', 'mouseout', 'mousedown', 'click', 'touchstart', 'touchmove'],
+        scales: { x: { type: 'linear', min: 0, max: 1440, ticks: { stepSize: 120, callback: v => `${Math.floor(v / 60)}:00` }, title: { display: true, text: '時間' } }, y: { title: { display: true, text: '潮位 (cm)' } } },
         plugins: {
           legend: { display: false },
-          tooltip: { enabled: false },
-          datalabels: { align: 'top', offset: 8, color: '#334155', font: { weight: 'bold', size: 12 }, formatter: v => `${v.tideType}\n${v.y}` }
+          datalabels: { align: 'top', offset: 5, color: '#334155', font: { weight: 'bold', size: 12 }, formatter: v => `${v.tideType}\n${v.y}` },
+          tooltip: { enabled: false }
         }
       },
-      plugins: [dragPlugin]
+      plugins: [pickPlugin]
     });
-    chart.$tidePoints = points;
-    const now = new Date();
-    chart.$dragX = now.getHours() * 60 + now.getMinutes();   /* 預設停在現在時間，拖曳即可移動 */
-    chart.draw();
+    if (parseHM($('tdTime').value) !== null) jumpToTime();   /* 換日期時沿用輸入的時間 */
   }
   /* 奎壁山分海：分海資料（月份可選） */
   function showKuibi() {
