@@ -67,7 +67,7 @@
       .app-logo{width:36px;height:36px;border-radius:11px}
       .app-titles h1{font-size:1.05rem}
       .app-titles p{display:block;font-size:.72rem}
-      .app-nav{display:grid;grid-template-columns:repeat(8,1fr);gap:0;padding:4px 2px max(4px,env(safe-area-inset-bottom));background:#fff;border-top:1px solid var(--line);box-shadow:0 -6px 18px rgba(7,43,75,.1);overflow:visible}
+      .app-nav{display:grid;grid-template-columns:repeat(9,1fr);gap:0;padding:4px 2px max(4px,env(safe-area-inset-bottom));background:#fff;border-top:1px solid var(--line);box-shadow:0 -6px 18px rgba(7,43,75,.1);overflow:visible}
       .nav-btn{flex-direction:column;gap:3px;border:0;background:transparent;color:#5b7480;border-radius:10px;padding:6px 1px;font-size:.68rem;font-weight:800;min-width:0}
       .nav-btn:hover{background:transparent;transform:none}
       .nav-btn.active{background:#e3f3f6;color:var(--blue);box-shadow:none}
@@ -765,6 +765,7 @@
       .app-nav .nav-btn[data-go="forecast"]{--nc:#2563eb;--nb:#dfe8fd}
       .app-nav .nav-btn[data-go="map"]{--nc:#16a34a;--nb:#d9f2e1}
       .app-nav .nav-btn[data-go="flight"]{--nc:#4338ca;--nb:#e2e1f8}
+      .app-nav .nav-btn[data-go="standby"]{--nc:#0f7ea8;--nb:#dceff6}
       .app-nav .nav-btn[data-go="stamp"]{--nc:#e8554a;--nb:#fcdedb}
       .app-nav .nav-btn.active{background:var(--nb,#e3f3f6);color:var(--nc,#075985);box-shadow:inset 0 -3px 0 var(--nc,#075985)}
       #view-home{background:#e3eff8}
@@ -779,6 +780,10 @@
     /* 批次景點生圖指令 */
     #view-gen{overflow:hidden;background:#fff}
     #genFrame{display:block;width:100%;height:100%;border:0;background:#fff}
+
+    /* 澎湖航空站候補資訊 */
+    #view-standby{overflow:hidden;background:#eef2f6}
+    #standbyFrame{display:block;width:100%;height:100%;border:0;background:#eef2f6}
 
     /* 熊熊集章卡 */
     #view-stamp{overflow:hidden;background:#fff6ea}
@@ -811,6 +816,7 @@
     <button type="button" class="nav-btn" data-go="forecast"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 16 5-6 4 4 4-7 5 6"/><path d="M3 20.5h18"/></svg><span class="l-long">30天潮汐預報</span><span class="l-short">潮汐</span></button>
     <button type="button" class="nav-btn" data-go="map"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-6.1-6.5-11.2a6.5 6.5 0 0 1 13 0C18.5 14.9 12 21 12 21z"/><circle cx="12" cy="9.8" r="2.4"/></svg><span class="l-long">互動地圖</span><span class="l-short">地圖</span></button>
     <button type="button" class="nav-btn" data-go="flight"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg><span class="l-long">機場航班</span><span class="l-short">航班</span></button>
+    <button type="button" class="nav-btn" data-go="standby"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="7.5" r="3"/><path d="M3.5 20c0-3.3 2.5-5.6 5.5-5.6s5.5 2.3 5.5 5.6"/><circle cx="17.5" cy="15.5" r="4"/><path d="M17.5 13.5v2.2l1.4 1"/></svg><span class="l-long">候補資訊</span><span class="l-short">候補</span></button>
     <button type="button" class="nav-btn" data-go="gen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="m20.5 16-5-5-8.5 8.5"/></svg><span class="l-long">批次生圖指令</span><span class="l-short">生圖</span></button>
     <button type="button" class="nav-btn" data-go="stamp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 3.5h5v3.2c0 1.6 1.3 2.3 1.3 4.3H8.2c0-2 1.3-2.7 1.3-4.3z"/><rect x="4.5" y="11" width="15" height="4" rx="1.2"/><path d="M4 20.5h16"/></svg><span class="l-long">集章卡</span><span class="l-short">集章</span></button>
   </nav>
@@ -1107,6 +1113,10 @@
         </section>
       </div>
     </section>
+    <!-- ================= 澎湖航空站候補資訊 ================= -->
+    <section class="view" id="view-standby" aria-label="澎湖航空站候補資訊" hidden>
+      <iframe id="standbyFrame" title="澎湖航空站候補資訊" hidden></iframe>
+    </section>
     <!-- ================= 批次景點生圖指令（原 澎湖在地探索） ================= -->
     <section class="view" id="view-gen" aria-label="批次景點生圖指令" hidden>
       <iframe id="genFrame" title="澎湖在地探索・批次生圖指令" hidden></iframe>
@@ -1128,6 +1138,323 @@
   <span class="image-modal-close" id="imageModalClose">&times;</span>
   <img class="image-modal-content" id="imageModalImg" alt="預覽圖片">
 </div>
+
+<!-- ================= 澎湖航空站候補資訊（原 澎湖航空站候補資訊-美化版本） ================= -->
+<template id="standbyTemplate">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #eef2f6;
+    --card: #ffffff;
+    --ink: #13212e;
+    --muted: #6a7887;
+    --line: #e4e9ef;
+    --navy: #0c2d48;
+    --sea: #0f7ea8;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* 頁首 */
+  header {
+    background: linear-gradient(120deg, var(--navy) 0%, #12507a 60%, var(--sea) 100%);
+    color: #fff;
+    padding: 12px 20px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  }
+  header h1 { margin: 0; font-size: 24px; font-weight: 900; letter-spacing: .06em; white-space: nowrap; }
+  .total {
+    display: flex; align-items: baseline; gap: 10px;
+    background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2);
+    padding: 4px 16px; border-radius: 12px;
+  }
+  .total span { font-size: 15px; font-weight: 500; opacity: .9; }
+  .total b { font-size: 34px; font-weight: 900; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .total small { font-size: 14px; opacity: .85; }
+  .time {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.22);
+    padding: 6px 12px; border-radius: 999px; font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #5ee0a8; animation: pulse 2s infinite; flex: none; }
+  .dot.err { background: #ff8a65; animation: none; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(94,224,168,.7); } 70% { box-shadow: 0 0 0 8px rgba(94,224,168,0); } 100% { box-shadow: 0 0 0 0 rgba(94,224,168,0); } }
+
+  main { padding: 12px 16px 10px; }
+
+  /* 目的地卡片 */
+  .grid { display: grid; gap: 14px; align-items: stretch; }
+  .card {
+    background: var(--card); border-radius: 16px; overflow: hidden;
+    box-shadow: 0 6px 20px rgba(12,45,72,.08);
+    display: flex; flex-direction: column;
+  }
+  .card-head { background: var(--dc); color: #fff; padding: 10px 14px 12px; }
+  .dest { font-size: 28px; font-weight: 900; letter-spacing: .1em; line-height: 1.2; margin-bottom: 8px; }
+  .badges { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .badge { background: rgba(255,255,255,.2); border-radius: 10px; padding: 5px 10px; }
+  .badge span { display: block; font-size: 12.5px; font-weight: 500; opacity: .95; }
+  .badge b { display: block; font-size: 26px; font-weight: 900; line-height: 1.15; font-variant-numeric: tabular-nums; }
+
+  /* 航空公司統整 */
+  .airs { padding: 8px 10px 6px; border-bottom: 1px solid var(--line); }
+  .ar { display: grid; grid-template-columns: 76px 1.3fr 1fr 1fr; align-items: center; gap: 6px; }
+  .ar.h { font-size: 11.5px; color: var(--muted); padding: 0 2px 4px; text-align: center; }
+  .ar.h span:first-child { text-align: left; }
+  .ar.r { background: var(--as); border-left: 4px solid var(--ac); border-radius: 8px; padding: 4px 6px; margin-bottom: 5px; text-align: center; }
+  .air-tag { justify-self: start; display: inline-block; color: #fff; background: var(--ac); font-size: 12.5px; font-weight: 700; padding: 2px 7px; border-radius: 6px; white-space: nowrap; }
+  .ar.r b { font-size: 22px; font-weight: 700; color: var(--ac); font-variant-numeric: tabular-nums; line-height: 1.25; }
+  .ar.r b.text { font-size: 12.5px; font-weight: 500; color: var(--muted); }
+
+  /* 班次明細 */
+  .flights-wrap { flex: 1; padding: 6px 10px 8px; }
+  .ft { font-size: 13px; font-weight: 700; color: var(--dc); margin: 2px 2px 4px; }
+  .flights { width: 100%; border-collapse: collapse; }
+  .flights th { font-size: 11.5px; font-weight: 500; color: var(--muted); padding: 3px 2px; text-align: center; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  .flights td { font-size: 14px; padding: 4px 2px; text-align: center; border-bottom: 1px solid #f0f3f6; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .flights td.t { font-weight: 700; color: var(--ink); }
+  .flights td.f { font-weight: 700; color: var(--ac); }
+  .flights .air-tag { font-size: 12px; padding: 1px 6px; }
+  .none { font-size: 13px; color: var(--muted); text-align: center; padding: 12px 0; }
+
+  .card-foot {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 14px; background: #f7f9fb; border-top: 1px solid var(--line); font-size: 14px; color: var(--muted);
+  }
+  .card-foot b { font-size: 20px; color: var(--dc); font-variant-numeric: tabular-nums; }
+
+  #msg { text-align: center; color: var(--muted); padding: 40px 0; font-size: 15px; }
+
+  .foot {
+    display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    margin-top: 10px; padding: 0 4px; font-size: 13px; color: var(--muted);
+  }
+  .foot a { color: var(--sea); text-decoration: none; font-weight: 500; }
+  .foot a:hover { text-decoration: underline; }
+
+  @media (min-width: 821px) {
+    .nx-cd { display: none; }
+  }
+
+  /* 手機：只顯示倒數更新秒數，卡片單欄 */
+  @media (max-width: 820px) {
+    header { padding: 12px 14px; }
+    header h1 { font-size: 20px; width: 100%; }
+    .total b { font-size: 28px; }
+    #upd, .nx-full { display: none; }
+    .grid { grid-template-columns: 1fr !important; }
+    main { padding: 12px; }
+  }
+</style>
+<header>
+  <h1>澎湖航空站候補資訊-美化版本</h1>
+  <div class="total"><span>現場等待人數</span><b id="all">—</b><small>人</small></div>
+  <div class="time"><i class="dot" id="dot"></i><span><span id="upd"></span><span id="next">正在更新…</span></span></div>
+</header>
+
+<main>
+  <div id="msg">載入中…</div>
+  <section class="grid" id="grid"></section>
+  <div class="foot">
+    <span>登記候補人數：當日尚未補上或保留中且未過號<br>後續班次數：1.5 小時內有班次起飛時，只計超過 1.5 小時的班次；否則依班次明細中尚未起飛的班次計算<br>後續航班不等於實際尚未起飛航班</span>
+    <span>資料來源：<a href="https://wt.mkport.gov.tw/" target="_blank" rel="noopener">澎湖航空站 - 候補相關資訊</a></span>
+  </div>
+</main>
+
+<script>
+  var API = 'https://script.google.com/macros/s/AKfycbxibV45Nq7ptEGfirCKcbaj1Fru0WrM5X1AvSviLcrJ7AXyCa-FTUNywbTmTkcw5qIa/exec';
+
+  // 航空公司：代碼, 名稱, 主色, 淡色
+  var AIRLINES = [
+    ['B7', '立榮航空', '#1f9d55', '#e9f7ef'],
+    ['AE', '華信航空', '#1d6fd6', '#e9f1fd'],
+    ['St', '星宇航空', '#0c2d48', '#eef2f6'],
+    ['DA', '德安航空', '#7b3fc4', '#f3ecfc']
+  ];
+
+  // 目的地：主色
+  var DEST = {
+    '臺北': '#d63a4a',
+    '臺中': '#e8760c',
+    '嘉義': '#a67c00',
+    '臺南': '#d0427e',
+    '高雄': '#0d8f86'
+  };
+
+  var NEAR_MIN = 90;                     // 1.5 小時
+  var AUTO_REFRESH_MS = 2 * 60 * 1000;   // 更新間隔
+
+  function v(x) { return x == null ? '' : x; }
+  function esc(s) { var d = document.createElement('div'); d.textContent = v(s); return d.innerHTML; }
+  function isNum(s) { return /^\d+$/.test(String(v(s)).trim()); }
+  function key(name) { return String(v(name)).trim().replace('台', '臺'); }
+
+  // "HH:MM" / "H:MM" / "HH:MM:SS" → 分鐘；格式不對回傳 NaN
+  function toMin(hm) {
+    var m = String(v(hm)).trim().match(/^(\d{1,2}):(\d{2})/);
+    return m ? Number(m[1]) * 60 + Number(m[2]) : NaN;
+  }
+
+  function nowMin() {
+    var p = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(new Date());
+    var o = {}; p.forEach(function (x) { o[x.type] = x.value; });
+    return (Number(o.hour) % 24) * 60 + Number(o.minute);
+  }
+
+  function airByName(name) {
+    var n = String(v(name)).trim().replace('航空', '');
+    for (var i = 0; i < AIRLINES.length; i++) {
+      if (n && AIRLINES[i][1].indexOf(n) === 0) return AIRLINES[i];
+    }
+    return null;
+  }
+
+  // 班次所屬航空公司：先比對班次代碼開頭，再比對公司名稱
+  function airOf(f) {
+    var fl = String(v(f.Flight)).trim().toUpperCase();
+    for (var i = 0; i < AIRLINES.length; i++) {
+      if (fl.indexOf(AIRLINES[i][0].toUpperCase()) === 0) return AIRLINES[i];
+    }
+    return airByName(f.AirCompany);
+  }
+
+  // 尚未起飛的班次（依時間排序）；明細讀不到時回傳 null
+  function upcoming(list, now) {
+    if (!Array.isArray(list)) return null;
+    return list
+      .filter(function (f) { var t = toMin(f.Time); return !isNaN(t) && t >= now; })
+      .sort(function (a, b) { return toMin(a.Time) - toMin(b.Time); });
+  }
+
+  // 後續班次數：1.5 小時內有班次起飛 → 只計超過 1.5 小時的班次；否則 → 依班次明細中尚未起飛的班次數
+  function nextCount(rows, code, official, now) {
+    if (!rows) return official;
+    return rows.filter(function (f) {
+      var a = airOf(f);
+      return a && a[0] === code && toMin(f.Time) - now > NEAR_MIN;
+    }).length;
+  }
+
+  function flightTable(rows) {
+    if (!rows || !rows.length) return '<div class="none">今日已無後續班次</div>';
+    return '<table class="flights"><thead><tr><th>起飛時間</th><th>航線別</th><th>航空公司</th><th>班次</th><th>補上人數</th></tr></thead><tbody>'
+      + rows.map(function (f) {
+          var a = airOf(f) || ['', f.AirCompany, '#0c2d48'];
+          return '<tr style="--ac:' + a[2] + '"><td class="t">' + esc(f.Time) + '</td><td>' + esc(f.DestinationName) + '</td>'
+            + '<td><span class="air-tag">' + esc(f.AirCompany) + '</span></td><td class="f">' + esc(f.Flight) + '</td><td>' + esc(f.BoardNumber) + '</td></tr>';
+        }).join('')
+      + '</tbody></table>';
+  }
+
+  var lastData = null;
+
+  function render(data) {
+    if (!data) return;
+    var now = nowMin();
+    var info = data.info || {};
+    document.getElementById('msg').style.display = 'none';
+    document.getElementById('all').textContent = v(info.All) === '' ? '—' : v(info.All);
+
+    var doubles = {};
+    (Array.isArray(info.Doubles) ? info.Doubles : []).forEach(function (x) { doubles[key(x.DestinationsName)] = x.Count; });
+    var lists = {};
+    Object.keys(data.lists || {}).forEach(function (n) { lists[key(n)] = data.lists[n]; });
+
+    var html = '';
+    data.details.forEach(function (d) {
+      var k = key(d.DestinationName);
+      var rows = upcoming(lists[k], now);
+
+      html += '<article class="card" style="--dc:' + (DEST[k] || '#0c2d48') + '">'
+        + '<div class="card-head"><div class="dest">' + esc(d.DestinationName) + '</div>'
+        + '<div class="badges">'
+        + '<div class="badge"><span>現場等待人數</span><b>' + esc(d.Count) + '</b></div>'
+        + '<div class="badge"><span>候補並訂位人數</span><b>' + esc(doubles[k]) + '</b></div>'
+        + '</div></div>';
+
+      html += '<div class="airs"><div class="ar h"><span>航空公司</span><span>目前叫號</span><span>登記候補人數</span><span>後續班次數</span></div>';
+      AIRLINES.forEach(function (a) {
+        var c = a[0];
+        if (!d['Is' + c]) return;
+        var call = d[c + 'NowBoarderNumber'];
+        html += '<div class="ar r" style="--ac:' + a[2] + ';--as:' + a[3] + '">'
+          + '<span class="air-tag">' + a[1] + '</span>'
+          + '<b' + (isNum(call) ? '' : ' class="text"') + '>' + esc(call) + '</b>'
+          + '<b>' + esc(d[c + 'WaitNumber']) + '</b>'
+          + '<b>' + esc(nextCount(rows, c, d[c + 'NextFlightCount'], now)) + '</b></div>';
+      });
+      html += '</div>';
+
+      html += '<div class="flights-wrap"><div class="ft">班次明細</div>' + flightTable(rows) + '</div>';
+
+      html += '<div class="card-foot"><span>補上人數</span><b>' + esc(d.HasWait) + '</b></div></article>';
+    });
+    var grid = document.getElementById('grid');
+    grid.style.gridTemplateColumns = 'repeat(' + Math.max(1, data.details.length) + ', minmax(0, 1fr))';
+    grid.innerHTML = html;
+  }
+
+  var nextRefreshAt = 0, loading = false, timer = null;
+
+  function formatTaipeiDateTime(date) {
+    return new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(date);
+  }
+
+  function updateNextRefreshText() {
+    var el = document.getElementById('next');
+    if (loading) { el.textContent = '｜正在更新…'; return; }
+    if (!nextRefreshAt) { el.textContent = ''; return; }
+    var seconds = Math.max(0, Math.ceil((nextRefreshAt - Date.now()) / 1000));
+    el.innerHTML = '<span class="nx-full">｜下次更新：' + formatTaipeiDateTime(new Date(nextRefreshAt)) + '（' + seconds + ' 秒後）</span>'
+      + '<span class="nx-cd">⟳ ' + seconds + ' 秒後更新</span>';
+  }
+
+  function scheduleNextRefresh() {
+    clearTimeout(timer);
+    nextRefreshAt = Date.now() + AUTO_REFRESH_MS;
+    updateNextRefreshText();
+    timer = setTimeout(load, AUTO_REFRESH_MS);
+  }
+
+  function load() {
+    if (loading) return;
+    loading = true;
+    updateNextRefreshText();
+    fetch(API + (API.indexOf('?') < 0 ? '?' : '&') + '_=' + Date.now(), { cache: 'no-store' })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (data) {
+        if (!data || !Array.isArray(data.details) || !data.info) throw new Error('bad data');
+        lastData = data;
+        render(data);
+        document.getElementById('dot').className = 'dot';
+        document.getElementById('upd').textContent = '上次更新：' + formatTaipeiDateTime(new Date());
+      })
+      .catch(function () {
+        document.getElementById('dot').className = 'dot err';
+        if (!lastData) {
+          var m = document.getElementById('msg');
+          m.style.display = 'block';
+          m.textContent = '資料讀取失敗，稍後自動重試';
+        }
+      })
+      .then(function () {
+        loading = false;
+        scheduleNextRefresh();
+      });
+  }
+
+  load();
+  setInterval(updateNextRefreshText, 1000);
+</script>
+</template>
 
 <!-- ================= 批次景點生圖指令：原始程式碼（只改了資料來源） ================= -->
 <template id="genTemplate">
@@ -5589,7 +5916,7 @@ function applyBranding() {
 /* =====================================================================
    分頁切換
    ===================================================================== */
-const VIEWS = ['home', 'map', 'events', 'tide', 'forecast', 'flight', 'calendar', 'gen', 'stamp'];
+const VIEWS = ['home', 'map', 'events', 'tide', 'forecast', 'flight', 'standby', 'calendar', 'gen', 'stamp'];
 let currentView = '';
 /* 電腦版不顯示集章卡、手機版不顯示批次生圖指令（與分頁列的 820px 切換點相同） */
 const MOBILE_MQ = window.matchMedia('(max-width:820px)');
@@ -5609,6 +5936,7 @@ function showView(view) {
   if (view === 'tide') { loadTideData(); TideDesk.onShown(); }
   if (view === 'forecast') onForecastShown();
   if (view === 'flight') Flights.onShown();
+  if (view === 'standby') loadStandby();
   if (view === 'calendar') Cal.onShown();
   if (view === 'gen') loadGenerator();
   if (view === 'stamp') loadStamp();
@@ -5631,10 +5959,18 @@ function loadGenerator() {
   frame.srcdoc = '<!DOCTYPE html>\n<html lang="zh-TW">\n' + $('genTemplate').innerHTML + '\n</html>';
   frame.hidden = false;
 }
+/* 澎湖航空站候補資訊：第一次開啟時才把原始頁面載入 iframe */
+function loadStandby() {
+  const frame = $('standbyFrame');
+  if (frame.dataset.loaded) return;
+  frame.dataset.loaded = '1';
+  frame.srcdoc = '<!DOCTYPE html>\n<html lang="zh-TW">\n' + $('standbyTemplate').innerHTML + '\n</html>';
+  frame.hidden = false;
+}
 /* 集章卡的雲端儲存／載入網址（系統設定「集章雲端網址」），由集章卡頁面讀取 */
 function stampCloudUrl() { return CFG.stampCloudUrl || ''; }
 /* 程式版本（顯示在集章選單，方便確認手機是否已更新到最新版） */
-const APP_VERSION = '2026-11-02-v7';
+const APP_VERSION = '2026-11-05-v0';
 function appVersion() { return APP_VERSION; }
 /* 集章卡的蓋章距離（公尺，系統設定「集章偵測範圍」，預設 50） */
 function stampRange() { const n = Number(String(CFG.stampRangeM || '').replace(/[^\d.]/g, '')); return n > 0 ? n : 50; }
