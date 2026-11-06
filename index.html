@@ -5980,7 +5980,7 @@ function loadStandby() {
 /* 集章卡的雲端儲存／載入網址（系統設定「集章雲端網址」），由集章卡頁面讀取 */
 function stampCloudUrl() { return CFG.stampCloudUrl || ''; }
 /* 程式版本（顯示在集章選單，方便確認手機是否已更新到最新版） */
-const APP_VERSION = '2026-11-06-v4';
+const APP_VERSION = '2026-11-06-v5';
 function appVersion() { return APP_VERSION; }
 /* 集章卡的蓋章距離（公尺，系統設定「集章偵測範圍」，預設 50） */
 function stampRange() { const n = Number(String(CFG.stampRangeM || '').replace(/[^\d.]/g, '')); return n > 0 ? n : 50; }
@@ -7812,14 +7812,14 @@ const Events = (() => {
       <div class="ev-actions">${it.link ? `<a class="ev-link" href="${esc(it.link)}" target="_blank" rel="noopener noreferrer">相關連結／GPS 引導 ↗</a>` : ''}<button type="button" class="ev-link-btn" data-cal-date="${esc(it.multi ? startFrom(it, k) : it.start < k && it.end >= k ? k : it.start)}">在月曆查看</button></div>
     </article>`;
   }
-  /* 活動列表只顯示一個月內的活動：進行中，或在一個月內（到下個月同一天）開始 */
-  function monthLater(k) {
+  /* 活動列表的顯示期限：「進行中／即將開始」一個月內，「之後的活動」三個月內（到幾個月後的同一天） */
+  function monthLater(k, n) {
     const [y, m, d] = k.split('/').map(Number);
-    const ny = m === 12 ? y + 1 : y, nm = m === 12 ? 1 : m + 1;
+    const t = y * 12 + (m - 1) + n, ny = Math.floor(t / 12), nm = t % 12 + 1;
     const last = new Date(Date.UTC(ny, nm, 0)).getUTCDate();
     return `${ny}/${pad2(nm)}/${pad2(Math.min(d, last))}`;
   }
-  const withinMonth = (it, k) => { const st = statusOf(it, k); return st === 'ongoing' || (st !== 'past' && startFrom(it, k) <= monthLater(k)); };
+  const withinMonth = (it, k) => { const st = statusOf(it, k); return st === 'ongoing' || (st !== 'past' && startFrom(it, k) <= monthLater(k, status === 'future' ? 3 : 1)); };
   const inStatus = (it, k) => {
     const st = statusOf(it, k);
     if (status === 'now') return st === 'ongoing' || st === 'soon';
