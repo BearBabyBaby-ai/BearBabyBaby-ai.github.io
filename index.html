@@ -5980,7 +5980,7 @@ function loadStandby() {
 /* 集章卡的雲端儲存／載入網址（系統設定「集章雲端網址」），由集章卡頁面讀取 */
 function stampCloudUrl() { return CFG.stampCloudUrl || ''; }
 /* 程式版本（顯示在集章選單，方便確認手機是否已更新到最新版） */
-const APP_VERSION = '2026-11-06-v5';
+const APP_VERSION = '2026-11-06-v6';
 function appVersion() { return APP_VERSION; }
 /* 集章卡的蓋章距離（公尺，系統設定「集章偵測範圍」，預設 50） */
 function stampRange() { const n = Number(String(CFG.stampRangeM || '').replace(/[^\d.]/g, '')); return n > 0 ? n : 50; }
@@ -7516,7 +7516,7 @@ const Cal = (() => {
     const one = g => (g.s === g.e ? g.s : `${g.s} – ${g.e}`) + (g.wd ? ` 每${[...g.wd].sort((a, b) => (a + 6) % 7 - (b + 6) % 7).map(d => `週${WEEK[d]}`).join('、')}` : '');
     return segs.map(one).join(segs.some(g => g.wd) ? '＋' : '、');
   }
-  const isHidden = it => CFG.calendarHidden.includes(it.cat) || (isMobile() && !it.yearly && it.end < todayKey());   /* 手機版不顯示已過期項目 */
+  const isHidden = it => CFG.calendarHidden.includes(it.cat) || (!it.yearly && it.end < todayKey());   /* 已過期項目不顯示（手機、電腦都一樣） */
   function occurs(it, key) {
     if (it.yearly) return key.slice(5) === it.start.slice(5) && key >= it.start.slice(0, 4);
     if (it.multi) return !(it.skip && it.skip.has(key)) && it.segs.some(g => g.s <= key && key <= g.e && (!g.wd || g.wd.has(weekdayOf(key))));
