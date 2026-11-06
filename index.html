@@ -5985,7 +5985,7 @@ function loadStandby() {
 /* 集章卡的雲端儲存／載入網址（系統設定「集章雲端網址」），由集章卡頁面讀取 */
 function stampCloudUrl() { return CFG.stampCloudUrl || ''; }
 /* 程式版本（顯示在集章選單，方便確認手機是否已更新到最新版） */
-const APP_VERSION = '2026-11-06-v1';
+const APP_VERSION = '2026-11-06-v2';
 function appVersion() { return APP_VERSION; }
 /* 集章卡的蓋章距離（公尺，系統設定「集章偵測範圍」，預設 50） */
 function stampRange() { const n = Number(String(CFG.stampRangeM || '').replace(/[^\d.]/g, '')); return n > 0 ? n : 50; }
@@ -7452,7 +7452,9 @@ const Cal = (() => {
      2027/01/03-2027/01/09 → 這段期間每天
      2027/01/03-2027/02/20 週一、週四 → 這段期間的每週一、週四
      以上可以混合，例如 116/01/03-116/03/20 週一、週四 + 116/02/24 → 期間內每週一、週四，另加 2/24 這天
-     （星期只套用在它前面那段期間） */
+     （星期只套用在它前面那段期間）
+     花火節例外：加的單日落在「期間＋星期」裡面時是改期，換掉那段期間離它最近的一場
+     （例如 116/02/24（三）換掉 116/02/25（四））；只有單日列表時一樣是加一天 */
   const DATE_RE = /(?<!\d)(\d{4}|\d{2,3})\s*[\/.\-年]\s*(\d{1,2})\s*[\/.\-月]\s*(\d{1,2})\s*日?(?!\d)/g;
   const WD_NUM = { 日: 0, 天: 0, 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6 };
   function parseSpec(value) {
@@ -7469,7 +7471,7 @@ const Cal = (() => {
     };
     for (let i = 0; i < ms.length; i++) {
       const s = toKey(ms[i]), nx = ms[i + 1];
-      if (nx && /^\s*(?:-|至|到)\s*$/.test(text.slice(ms[i].index + ms[i][0].length, nx.index))) {
+      if (nx && /^\s*(?:[（(][^)）]*[)）])?\s*(?:-|至|到)\s*$/.test(text.slice(ms[i].index + ms[i][0].length, nx.index))) {
         const e = toKey(nx), after = ms[i + 2];
         /* 期間後面到下一個日期之前寫的星期，只套用在這段期間 */
         const wd = wdIn(text.slice(nx.index + nx[0].length, after ? after.index : text.length));
@@ -7479,14 +7481,31 @@ const Cal = (() => {
     segs.sort((a, b) => a.s.localeCompare(b.s));
     return { segs, start: segs[0].s, end: segs.reduce((a, g) => g.e > a ? g.e : a, segs[0].e) };
   }
-  const specFields = sp => ({ start: sp.start, end: sp.end, segs: sp.segs, multi: sp.segs.length > 1 || sp.segs.some(g => g.wd) });
+  const isFireItem = (cat, name) => /花火|煙火/.test(cat) || /施放|花火|煙火/.test(plainText(name));
+  /* 花火節改期：單日落在「期間＋星期」裡，就把那段期間離它最近的一場拿掉 */
+  function fireSkips(segs) {
+    const skip = new Set();
+    segs.filter(g => g.s === g.e).forEach(one => {
+      const g = segs.find(x => x.wd && x.s <= one.s && one.s <= x.e);
+      if (!g || g.wd.has(weekdayOf(one.s))) return;
+      let best = '', dist = Infinity;
+      for (let k = g.s, i = 0; k <= g.e && i < 800; k = addDays(k, 1), i++) {
+        if (!g.wd.has(weekdayOf(k))) continue;
+        const d = Math.abs(daysBetween(k, one.s));
+        if (d < dist) { dist = d; best = k; }
+      }
+      if (best) skip.add(best);
+    });
+    return skip.size ? skip : null;
+  }
+  const specFields = (sp, fire) => ({ start: sp.start, end: sp.end, segs: sp.segs, skip: fire ? fireSkips(sp.segs) : null, multi: sp.segs.length > 1 || sp.segs.some(g => g.wd) });
   /* 某天之後（含）的第一個日期；沒有就回傳空字串 */
   function nextOn(it, key) {
     if (!it.multi) return it.end >= key ? (it.start > key ? it.start : key) : '';
     let best = '';
     for (const g of it.segs) {
       if (g.e < key) continue;
-      for (let k = g.s > key ? g.s : key, i = 0; k <= g.e && i < 800; k = addDays(k, 1), i++) if (!g.wd || g.wd.has(weekdayOf(k))) { if (!best || k < best) best = k; break; }
+      for (let k = g.s > key ? g.s : key, i = 0; k <= g.e && i < 800; k = addDays(k, 1), i++) if ((!g.wd || g.wd.has(weekdayOf(k))) && !(it.skip && it.skip.has(k))) { if (!best || k < best) best = k; break; }
     }
     return best;
   }
@@ -7494,7 +7513,7 @@ const Cal = (() => {
   function datesOf(it) {
     const out = [];
     (it.segs || [{ s: it.start, e: it.end }]).forEach(g => { for (let k = g.s, i = 0; k <= g.e && i < 800; k = addDays(k, 1), i++) if (!g.wd || g.wd.has(weekdayOf(k))) out.push(k); });
-    return [...new Set(out)].sort();
+    return [...new Set(out)].filter(k => !(it.skip && it.skip.has(k))).sort();
   }
   /* 日期文字：2027/01/03、2027/01/05 或 2027/01/03 – 2027/02/20 每週一、週四 */
   function dateLabel(it) {
@@ -7505,7 +7524,7 @@ const Cal = (() => {
   const isHidden = it => CFG.calendarHidden.includes(it.cat) || (isMobile() && !it.yearly && it.end < todayKey());   /* 手機版不顯示已過期項目 */
   function occurs(it, key) {
     if (it.yearly) return key.slice(5) === it.start.slice(5) && key >= it.start.slice(0, 4);
-    if (it.multi) return it.segs.some(g => g.s <= key && key <= g.e && (!g.wd || g.wd.has(weekdayOf(key))));
+    if (it.multi) return !(it.skip && it.skip.has(key)) && it.segs.some(g => g.s <= key && key <= g.e && (!g.wd || g.wd.has(weekdayOf(key))));
     return it.start <= key && key <= it.end;
   }
   const visible = () => items.filter(it => !isHidden(it) && (!filter || it.cat === filter));
@@ -7522,7 +7541,7 @@ const Cal = (() => {
     return rows.slice(1).map(r => {
       const cat = clean(r[ix.cat]), name = clean(r[ix.name]), sp = parseSpec(r[ix.date]);
       if (!cat || !name || !sp) return null;
-      return { src: 'special', cat, name, ...specFields(sp), time: fmtTime(r[ix.time]), range: clean(r[ix.range]), yearly: /生日/.test(name) };
+      return { src: 'special', cat, name, ...specFields(sp, isFireItem(cat, name)), time: fmtTime(r[ix.time]), range: clean(r[ix.range]), yearly: /生日/.test(name) };
     }).filter(Boolean);
   }
   function parseActivity(rows) {
@@ -7531,7 +7550,7 @@ const Cal = (() => {
     return rows.slice(1).map(r => {
       const cat = clean(r[ix.cat]), name = clean(r[ix.name]), sp = parseSpec(r[ix.date]);
       if (!cat || !name || !sp) return null;
-      return { src: 'activity', cat, name, ...specFields(sp), time: fmtTime(r[ix.time]), content: clean(r[ix.content]), place: clean(r[ix.place]), unit: clean(r[ix.unit]), link: validFullUrl(r[ix.link]), note: clean(r[ix.note]), yearly: false };
+      return { src: 'activity', cat, name, ...specFields(sp, isFireItem(cat, name)), time: fmtTime(r[ix.time]), content: clean(r[ix.content]), place: clean(r[ix.place]), unit: clean(r[ix.unit]), link: validFullUrl(r[ix.link]), note: clean(r[ix.note]), yearly: false };
     }).filter(Boolean);
   }
   function load() {
