@@ -158,10 +158,6 @@
        活動專區
        ===================================================================== */
     .ev-page{max-width:1320px;margin:0 auto;padding:16px 18px 30px}
-    .ev-live{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
-    .ev-live:empty{display:none}
-    .ev-live button{display:flex;flex-direction:column;align-items:flex-start;border:0;border-radius:14px;padding:10px 15px;color:#fff;font-weight:900;font-size:.95rem;text-align:left;box-shadow:0 6px 16px rgba(7,43,75,.16)}
-    .ev-live button small{font-weight:800;font-size:.76rem;opacity:.92;margin-top:2px}
     .ev-tabs{display:inline-flex;flex-wrap:wrap;gap:4px;background:#e3eef1;border-radius:12px;padding:4px}
     .ev-tab{border:0;background:transparent;border-radius:9px;padding:9px 14px;font-weight:900;color:#3d5a66;font-size:.86rem}
     .ev-tab.active{background:#fff;color:var(--blue);box-shadow:0 2px 6px rgba(7,43,75,.12)}
@@ -916,7 +912,6 @@
           <button type="button" class="ev-mode-btn" data-ev-mode="fire" role="tab" aria-selected="false" hidden>🎆 花火節</button>
         </div>
         <div id="evListMode">
-          <div id="evLive" class="ev-live"></div>
           <div class="ev-tabs" id="evTabs" role="tablist" aria-label="活動狀態">
             <button type="button" class="ev-tab active" data-status="now">進行中／即將開始</button>
             <button type="button" class="ev-tab" data-status="future">之後的活動</button>
@@ -5985,7 +5980,7 @@ function loadStandby() {
 /* 集章卡的雲端儲存／載入網址（系統設定「集章雲端網址」），由集章卡頁面讀取 */
 function stampCloudUrl() { return CFG.stampCloudUrl || ''; }
 /* 程式版本（顯示在集章選單，方便確認手機是否已更新到最新版） */
-const APP_VERSION = '2026-11-06-v2';
+const APP_VERSION = '2026-11-06-v3';
 function appVersion() { return APP_VERSION; }
 /* 集章卡的蓋章距離（公尺，系統設定「集章偵測範圍」，預設 50） */
 function stampRange() { const n = Number(String(CFG.stampRangeM || '').replace(/[^\d.]/g, '')); return n > 0 ? n : 50; }
@@ -7736,7 +7731,9 @@ const Events = (() => {
 
   const normName = s => clean(s).replace(/<br\s*\/?>/gi, '').replace(/^財團法人/, '').replace(/[\s\-－–—‧・·.()（）「」『』【】,，、:：]/g, '').replace(/後/g, '后').replace(/臺/g, '台').replace(/温/g, '溫');
   const isEligible = it => !EXCLUDE.includes(it.cat) && !it.yearly;
-  const eligible = () => Cal.all().filter(isEligible);
+  /* 日期欄寫了好幾個日期（例如 2027/01/03、2027/01/05）時，每個日期（或每段期間）各列一筆 */
+  const splitDates = it => it.multi && it.segs.length > 1 ? it.segs.map(g => ({ ...it, start: g.s, end: g.e, segs: [g], multi: Boolean(g.wd) })) : [it];
+  const eligible = () => Cal.all().filter(isEligible).flatMap(splitDates);
   const dateRange = it => it.multi ? Cal.dateLabel(it) : it.start === it.end ? it.start : `${it.start} – ${it.end}`;
   /* 下一個舉辦日（多日期、每週固定星期的活動用） */
   const startFrom = (it, k) => it.multi ? (Cal.nextOn(it, k) || it.start) : it.start;
@@ -7848,9 +7845,7 @@ const Events = (() => {
     if (!Cal.loaded) { listBox.innerHTML = '<div class="empty">正在讀取活動…</div>'; return; }
     const k = todayKey();
     const all = eligible();
-    if (!all.length) { $('evLive').innerHTML = ''; $('evCats').innerHTML = ''; listBox.innerHTML = `<div class="empty">${esc(Cal.error || '目前沒有活動資料')}</div>`; return; }
-    const live = summary(active(), k);
-    $('evLive').innerHTML = live.map(s => `<button type="button" data-ev-cat="${esc(s.cat)}" style="background:${Cal.colorOf(s.cat)}">🎉 ${esc(s.cat)}<small>${s.on ? `${s.on} 場進行中` : ''}${s.on && s.soon ? '・' : ''}${s.soon ? `${s.soon} 場即將開始` : ''}</small></button>`).join('');
+    if (!all.length) { $('evCats').innerHTML = ''; listBox.innerHTML = `<div class="empty">${esc(Cal.error || '目前沒有活動資料')}</div>`; return; }
     $('evTabs').querySelectorAll('.ev-tab').forEach(t => t.classList.toggle('active', t.dataset.status === status));
     const pool = all.filter(it => inStatus(it, k));
     const counts = new Map();
