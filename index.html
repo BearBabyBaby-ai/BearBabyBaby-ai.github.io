@@ -233,6 +233,7 @@
     #view-map .card-table{display:grid;max-height:460px;overflow-y:auto;-webkit-overflow-scrolling:touch}
     #view-map .data-row{display:grid;text-decoration:none;color:inherit;cursor:pointer;grid-template-columns:42px minmax(0,1fr) 38px;gap:9px;align-items:center;padding:11px 12px;border-bottom:1px solid #e6f0f2}
     #view-map .data-row:last-child{border-bottom:0}
+    #view-map .data-row[style*="--rc"]{border-left:4px solid var(--rc)}   /* 左邊色條：分類顏色 */
     #view-map .data-row:hover,#view-map .data-row:focus{background:#f0f9fa;outline:2px solid transparent}
     #view-map .data-row:focus-visible{outline:2px solid #0ea5a8;outline-offset:-2px}
     #view-map .type-badge{font-size:.73rem;font-weight:900;text-align:center;border-radius:8px;padding:6px 3px;background:#eef7f8;color:#365f6d}
@@ -5987,7 +5988,7 @@ function loadStandby() {
 /* 集章卡的雲端儲存／載入網址（系統設定「集章雲端網址」），由集章卡頁面讀取 */
 function stampCloudUrl() { return CFG.stampCloudUrl || ''; }
 /* 程式版本（顯示在集章選單，方便確認手機是否已更新到最新版） */
-const APP_VERSION = '2026-11-08-v1';
+const APP_VERSION = '2026-11-08-v2';
 function appVersion() { return APP_VERSION; }
 /* 集章卡的蓋章距離（公尺，系統設定「集章偵測範圍」，預設 50） */
 function stampRange() { const n = Number(String(CFG.stampRangeM || '').replace(/[^\d.]/g, '')); return n > 0 ? n : 50; }
@@ -6253,13 +6254,13 @@ function selectRegion(region) {
 
 /* 清單（分批渲染，避免一次產生上千個節點） */
 function rowHtml(d) {
-  const color = colorOf(d);
+  const color = rowColorOf(d);
   const closed = isClosed(d) ? '<span class="closed-tag">歇業</span>' : '';
   const content = `<span class="type-badge" style="background:${color}18;color:${color}">${esc(glyphOf(d))}</span><span><span class="data-name">${esc(d.name)}${closed}</span><span class="data-meta">${esc([d.region, rowMeta(d)].filter(Boolean).join('・'))}</span></span><span class="locate" aria-hidden="true">⌖</span>`;
   const cls = `data-row${isClosed(d) ? ' is-closed' : ''}`;
   return isMobile()
-    ? `<a class="${cls}" href="${esc(getTargetUrl(d))}" target="_blank" rel="noopener noreferrer">${content}</a>`
-    : `<div class="${cls}" data-key="${esc(keyOf(d))}" role="button" tabindex="0">${content}</div>`;
+    ? `<a class="${cls}" style="--rc:${color}" href="${esc(getTargetUrl(d))}" target="_blank" rel="noopener noreferrer">${content}</a>`
+    : `<div class="${cls}" style="--rc:${color}" data-key="${esc(keyOf(d))}" role="button" tabindex="0">${content}</div>`;
 }
 function renderCards() {
   renderedCount = 0;
@@ -6297,7 +6298,26 @@ function mealMatch(d, meal) {
   return parts.some(x => x === meal || (/^[早午晚]+餐$/.test(x) && x.includes(meal[0])));   /* 早午餐＝早餐＋午餐，以此類推 */
 }
 const MOBILE_HIDE_FOOD_CHIPS = ['伴手禮', '水果'];   /* 手機版美食不顯示的分類按鈕 */
+const MEAL_CHIP_COLORS = { 早餐: '#d97706', 午餐: '#0891b2', 晚餐: '#7c3aed' };
 const SUB_CHIP_COLORS = ['#dc2626', '#ea580c', '#ca8a04', '#16a34a', '#0891b2', '#2563eb', '#7c3aed', '#db2777', '#0d9488', '#d97706', '#4f46e5', '#65a30d'];
+/* 分類顏色：每個資料類型依分類第一次出現的順序配色（分類按鈕與清單共用，換區域也不變） */
+const catOfRow = d => String((d.type === '美食' ? d.mainCategory : d.category) || '').split(/[／/]/).map(v => v.trim()).filter(Boolean);
+let catColorRef = null, catColorMap = {};
+function catColor(type, cat) {
+  if (catColorRef !== allData) {
+    catColorRef = allData; catColorMap = {};
+    allData.forEach(d => {
+      const m = catColorMap[d.type] || (catColorMap[d.type] = new Map());
+      catOfRow(d).forEach(c => { if (!m.has(c)) m.set(c, SUB_CHIP_COLORS[m.size % SUB_CHIP_COLORS.length]); });
+    });
+  }
+  if (MEAL_CHIP_COLORS[cat]) return MEAL_CHIP_COLORS[cat];   /* 手機版美食的早餐／午餐／晚餐按鈕 */
+  const m = catColorMap[type];
+  if (m && m.has(cat)) return m.get(cat);
+  return SUB_CHIP_COLORS[[...String(cat)].reduce((a, ch) => a + ch.charCodeAt(0), 0) % SUB_CHIP_COLORS.length];
+}
+/* 清單每一列的顏色：測速執法維持速／執的顏色，其他用第一個分類的顏色，沒有分類就用資料類型顏色 */
+const rowColorOf = d => { if (d.kind) return colorOf(d); const c = catOfRow(d)[0]; return c ? catColor(d.type, c) : colorOf(d); };
 function renderSubFilters() {
   const cats = activeType ? [...new Set(allData.filter(d => d.type === activeType && (!activeRegion || d.region === activeRegion))
     .flatMap(d => (activeType === '美食' ? d.mainCategory : d.category).split(/[／/]/).map(v => v.trim())).filter(Boolean))] : [];
@@ -6308,7 +6328,7 @@ function renderSubFilters() {
   }
   if (!activeType || cats.length < 2 || cats.length > 24) { subFilters.hidden = true; subFilters.innerHTML = ''; activeSub = ''; return; }
   if (activeSub && !cats.includes(activeSub)) activeSub = '';
-  subFilters.innerHTML = cats.map((c, i) => `<button type="button" class="sub-chip${c === activeSub ? ' active' : ''}" data-sub="${esc(c)}" style="--sc:${SUB_CHIP_COLORS[i % SUB_CHIP_COLORS.length]}">${esc(c)}</button>`).join('');
+  subFilters.innerHTML = cats.map(c => `<button type="button" class="sub-chip${c === activeSub ? ' active' : ''}" data-sub="${esc(c)}" style="--sc:${catColor(activeType, c)}">${esc(c)}</button>`).join('');
   subFilters.hidden = false;
 }
 function applyFilter() {
