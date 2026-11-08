@@ -370,6 +370,7 @@
     .td-info .safe{border-left:5px solid #10b981}.td-info .safe b{color:#047857}
     .td-info .rise{border-left:5px solid #d97706}.td-info .rise b{color:#b45309}
     .td-info .set{border-left:5px solid #7c3aed}.td-info .set b{color:#6d28d9}
+    .td-info .pool{border-left:5px solid #eab308}.td-info .pool b{color:#a16207}.td-info .pool i{font-style:normal;white-space:nowrap}
     .f-card-safety{font-size:.85rem;color:#065f46;background:#ecfdf5;border-left:4px solid #10b981;border-radius:6px;padding:6px 10px;margin-top:6px}
     @media(min-width:821px){
       .app-nav .nav-btn[data-go="forecast"]{display:none}
@@ -392,6 +393,7 @@
     .f-card.active{border:2px solid #900;background:#fffcfc}
     .f-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;font-size:1.1rem;font-weight:800;color:#1e293b}
     .f-card-note{font-size:.82rem;color:#64748b;margin-bottom:4px}
+    .f-card-pool{margin-top:8px;padding:9px 10px;background:#fefce8;border-left:4px solid #eab308;border-radius:9px;color:#713f12;font-size:.9rem;font-weight:800;line-height:1.7}.f-card-pool b{display:block;color:#a16207;font-size:.82rem}.f-card-pool i{font-style:normal;white-space:nowrap}
     .f-tide-container{margin-top:10px;display:none;border-top:1px solid #eee;padding-top:10px}
     .f-card.active .f-tide-container{display:block}
     .f-tide-row{display:grid;grid-template-columns:60px 80px 1fr 40px;align-items:center;padding:8px 12px;margin-bottom:5px;background:#f8fafc;border-radius:4px;font-size:1rem}
@@ -5980,7 +5982,7 @@ function loadStandby() {
 /* 集章卡的雲端儲存／載入網址（系統設定「集章雲端網址」），由集章卡頁面讀取 */
 function stampCloudUrl() { return CFG.stampCloudUrl || ''; }
 /* 程式版本（顯示在集章選單，方便確認手機是否已更新到最新版） */
-const APP_VERSION = '2026-11-06-v7';
+const APP_VERSION = '2026-11-08-v0';
 function appVersion() { return APP_VERSION; }
 /* 集章卡的蓋章距離（公尺，系統設定「集章偵測範圍」，預設 50） */
 function stampRange() { const n = Number(String(CFG.stampRangeM || '').replace(/[^\d.]/g, '')); return n > 0 ? n : 50; }
@@ -6620,10 +6622,51 @@ function selectForecastCard(card) {
   card.classList.add('active');
   updateForecastChart(card.dataset.day);
 }
+/* 西嶼：池西岩瀑建議觀賞高度 35～60、-35～-60；當天最高未達 60（或最低未達 -60）時只到當天最高／最低，未達 35（或 -35）不顯示 */
+const CHIXI = { from: 35, to: 60 };
+function chixiBands(tides) {
+  const hs = (tides || []).map(t => Number(t.height)).filter(Number.isFinite);
+  if (!hs.length) return [];
+  const top = Math.max(...hs), low = Math.min(...hs), out = [];
+  if (top > CHIXI.from) out.push([CHIXI.from, Math.min(CHIXI.to, top)]);
+  if (low < -CHIXI.from) out.push([Math.max(-CHIXI.to, low), -CHIXI.from]);
+  return out;
+}
+/* 相鄰滿乾潮之間用半週期餘弦（與分合海時間、電腦版趨勢圖相同） */
+function chixiCos(ext, m) {
+  let i = ext.findIndex((p, k) => k < ext.length - 1 && m <= ext[k + 1].m);
+  if (i < 0) i = ext.length - 2;
+  const a = ext[i], b = ext[i + 1], span = (b.m - a.m) || 1;
+  return (a.h + b.h) / 2 + (a.h - b.h) / 2 * Math.cos(Math.PI * (m - a.m) / span);
+}
+const chixiHHMM = m => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(Math.round(m) % 60).padStart(2, '0')}`;
+/* 曲線落在黃底高度內的時段 */
+function chixiBandWindows(ext, bands) {
+  if (!ext || ext.length < 2 || !bands.length) return [];
+  const from = Math.ceil(Math.max(0, ext[0].m)), to = Math.floor(Math.min(1439, ext[ext.length - 1].m)), out = [];
+  let start = null;
+  for (let m = from; m <= to; m++) {
+    const h = chixiCos(ext, m), inside = bands.some(([lo, hi]) => h >= lo && h <= hi);
+    if (inside && start === null) start = m;
+    if ((!inside || m === to) && start !== null) { const end = inside ? m : m - 1; if (end > start) out.push(`${chixiHHMM(start)}–${chixiHHMM(end)}`); start = null; }
+  }
+  return out;
+}
+/* 手機端西嶼：清單卡片放入池西岩瀑建議觀賞時間（曲線與電腦版趨勢圖相同） */
+function chixiWindows(i) {
+  const near = list => (list || []).map(t => { const m = String(t.time || '').match(/(\d{1,2}):(\d{2})/); return { m: m ? +m[1] * 60 + +m[2] : null, h: t.height }; }).filter(p => p.m != null).sort((a, b) => a.m - b.m);
+  const cur = forecastStore[forecastDateList[i]], today = near(cur.tides);
+  if (!today.length) return [];
+  const prev = near((forecastStore[forecastDateList[i - 1]] || {}).tides), next = near((forecastStore[forecastDateList[i + 1]] || {}).tides);
+  const ext = [...(prev.length ? [{ m: prev[prev.length - 1].m - 1440, h: prev[prev.length - 1].h }] : []), ...today, ...(next.length ? [{ m: next[0].m + 1440, h: next[0].h }] : [])];
+  return chixiBandWindows(ext, chixiBands(cur.tides));
+}
 function renderForecastUI() {
-  $('forecastList').innerHTML = forecastDateList.map(d => {
+  const pool = isMobile() && $('forecastRegion').value === '西嶼';
+  $('forecastList').innerHTML = forecastDateList.map((d, i) => {
     const data = forecastStore[d];
-    const tideHtml = `<div class="f-tide-container">${data.tides.map(t => `<div class="f-tide-row ${t.type === '滿潮' ? 'high' : 'low'}"><span>${esc(t.type)}</span><span style="font-weight:bold">${esc(t.time)}</span><span style="text-align:right;font-weight:bold;font-family:monospace">${t.height}</span><span>cm</span></div>`).join('')}</div>`;
+    const poolHtml = pool ? (w => `<div class="f-card-pool"><b>🟨 池西岩瀑建議觀賞</b>${w.length ? w.map(x => `<i>${x}</i>`).join('、') : '暫無資料'}</div>`)(chixiWindows(i)) : '';
+    const tideHtml = `<div class="f-tide-container">${data.tides.map(t => `<div class="f-tide-row ${t.type === '滿潮' ? 'high' : 'low'}"><span>${esc(t.type)}</span><span style="font-weight:bold">${esc(t.time)}</span><span style="text-align:right;font-weight:bold;font-family:monospace">${t.height}</span><span>cm</span></div>`).join('')}${poolHtml}</div>`;
     const tagHtml = !data.tags.length ? '' : `<div class="f-status-tags">${data.tags.map(tag => `<span class="f-tag-pill ${tag.type === 'mer' ? 'f-bg-mer' : 'f-bg-sep'}">${tag.label} ${esc(tag.time)}</span>`).join('')}</div>`;
     const note = data.note ? `<div class="f-card-note">${esc(data.note)}</div>` : '';
     return `<div class="f-card" data-day="${esc(d)}"><div class="f-card-header">${esc(d)}</div>${note}${tagHtml}${tideHtml}</div>`;
@@ -6712,6 +6755,11 @@ const TideDesk = (() => {
       if (!marks) return;
       const ctx = c.ctx, area = c.chartArea, xs = c.scales.x;
       ctx.save();
+      bandBox(c).forEach(({ top, bot }) => {
+        ctx.fillStyle = 'rgba(250,204,21,0.34)'; ctx.fillRect(area.left, top, area.right - area.left, bot - top);
+        ctx.strokeStyle = 'rgba(202,138,4,0.8)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(area.left, top); ctx.lineTo(area.right, top); ctx.moveTo(area.left, bot); ctx.lineTo(area.right, bot); ctx.stroke();
+      });
       ctx.font = 'bold 11px "Noto Sans TC","Microsoft JhengHei",sans-serif';
       ctx.textBaseline = 'top';
       marks.safe.forEach(([a, b]) => {
@@ -6730,8 +6778,30 @@ const TideDesk = (() => {
         ctx.fillText(`${label} ${hhmm(m)}`, x + (ctx.textAlign === 'right' ? -4 : 4), area.top + 4);
       });
       ctx.restore();
+    },
+    afterDatasetsDraw(c) {
+      const boxes = bandBox(c);
+      if (!boxes.length) return;
+      const ctx = c.ctx, area = c.chartArea;
+      ctx.save();
+      ctx.font = 'bold 11px "Noto Sans TC","Microsoft JhengHei",sans-serif';
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
+      boxes.forEach(({ top, bot }) => {
+        const y = (top + bot) / 2;
+        ctx.strokeStyle = 'rgba(255,255,255,0.95)'; ctx.lineWidth = 3; ctx.strokeText('池西岩瀑 建議觀賞高度', area.left + 6, y);
+        ctx.fillStyle = '#a16207'; ctx.fillText('池西岩瀑 建議觀賞高度', area.left + 6, y);
+      });
+      ctx.restore();
     }
   };
+  /* 黃底區塊（池西岩瀑建議觀賞高度）在畫面上的位置 */
+  function bandBox(c) {
+    const bands = (c.$marks && c.$marks.bands) || [], ys = c.scales.y, area = c.chartArea;
+    return bands.map(([lo, hi]) => {
+      const y1 = ys.getPixelForValue(hi), y2 = ys.getPixelForValue(lo);
+      return { top: Math.max(area.top, Math.min(y1, y2)), bot: Math.min(area.bottom, Math.max(y1, y2)) };
+    }).filter(b => b.bot > b.top);
+  }
   const pickPlugin = {
     id: 'tidePick',
     afterEvent(c, args) {
@@ -6827,14 +6897,23 @@ const TideDesk = (() => {
       plugins: [marksPlugin, pickPlugin]
     });
     chart.$ext = ext; chart.$range = range;
-    /* 右下角資訊：安全通行、日出、日沒（奎壁山摩西分海才有） */
+    /* 右下角資訊：安全通行、日出、日沒（奎壁山摩西分海才有）；30天潮汐預報西嶼只放池西岩瀑建議觀賞時間 */
+    const bands = mode === 'fc' && place.value === '西嶼' ? chixiBands(data.tides) : null;
     const info = $('tdInfo');
-    info.hidden = !(data.safetyList || data.sunrise);
-    if (!info.hidden) info.innerHTML = `<div class="safe"><b>🟩 安全通行</b><span>${(data.safetyList || []).length ? data.safetyList.map(s => esc(s.replace(/-/g, '–'))).join('、') : '暫無資料'}</span></div><div class="rise"><b>🌅 日出</b><span>${esc(data.sunrise || '--:--')}</span></div><div class="set"><b>🌇 日沒</b><span>${esc(data.sunset || '--:--')}</span></div>`;
-    /* 奎壁山摩西分海才有安全通行與日出日沒資料 */
-    chart.$marks = data.safetyList || data.sunrise ? {
+    const hasKb = Boolean(data.safetyList || data.sunrise);
+    info.hidden = !(hasKb || bands);
+    if (bands) {
+      const w = chixiBandWindows(ext, bands);
+      info.innerHTML = `<div class="pool"><b>🟨 池西岩瀑建議觀賞</b><span>${w.length ? w.map(x => `<i>${x}</i>`).join('、') : '暫無資料'}</span></div>`;
+      info.style.gridTemplateColumns = 'minmax(0,1fr)';
+    } else if (hasKb) {
+      info.innerHTML = `<div class="safe"><b>🟩 安全通行</b><span>${(data.safetyList || []).length ? data.safetyList.map(s => esc(s.replace(/-/g, '–'))).join('、') : '暫無資料'}</span></div><div class="rise"><b>🌅 日出</b><span>${esc(data.sunrise || '--:--')}</span></div><div class="set"><b>🌇 日沒</b><span>${esc(data.sunset || '--:--')}</span></div>`;
+      info.style.gridTemplateColumns = '';
+    }
+    /* 奎壁山摩西分海才有安全通行與日出日沒資料；西嶼有黃底建議觀賞高度 */
+    chart.$marks = hasKb || bands ? {
       safe: (data.safetyList || []).map(s => s.split(/[-~～–]/).map(toMin)).filter(([a, b]) => a != null && b != null && b > a),
-      sunrise: toMin(data.sunrise), sunset: toMin(data.sunset)
+      sunrise: toMin(data.sunrise), sunset: toMin(data.sunset), bands: bands || []
     } : null;
     chart.draw();
   }
