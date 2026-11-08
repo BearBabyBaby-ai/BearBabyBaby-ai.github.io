@@ -268,6 +268,11 @@
     #view-map .sub-filters{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
     #view-map .sub-chip{border:1px solid var(--line);background:#fff;color:#315767;border-radius:999px;padding:5px 11px;font-size:.78rem;font-weight:800}
     #view-map .sub-chip.active{background:#16a34a;border-color:#15803d;color:#fff}
+    /* 資料類型按鈕、分類按鈕各有自己的顏色（未選淡色、選到實色） */
+    #view-map .filter[style*="--fc"]{background:color-mix(in srgb,var(--fc) 13%,#fff);border-color:color-mix(in srgb,var(--fc) 45%,#fff);color:var(--fc)}
+    #view-map .filter[style*="--fc"].active{background:var(--fc);border-color:var(--fc);color:#fff;box-shadow:0 3px 10px color-mix(in srgb,var(--fc) 35%,transparent)}
+    #view-map .sub-chip[style*="--sc"]{background:color-mix(in srgb,var(--sc) 12%,#fff);border-color:color-mix(in srgb,var(--sc) 45%,#fff);color:var(--sc)}
+    #view-map .sub-chip[style*="--sc"].active{background:var(--sc);border-color:var(--sc);color:#fff}
     #view-map .data-row.is-closed{background:#fff5f5}
     #view-map .load-more{display:block;width:100%;border:0;border-top:1px solid #e6f0f2;background:#f5fbfc;color:#075985;font-weight:900;padding:11px;font-size:.84rem}
     @media(max-width:1120px){#view-map .nearby-panel{max-height:42%}#view-map .album-card{flex-basis:170px}}
@@ -5982,7 +5987,7 @@ function loadStandby() {
 /* 集章卡的雲端儲存／載入網址（系統設定「集章雲端網址」），由集章卡頁面讀取 */
 function stampCloudUrl() { return CFG.stampCloudUrl || ''; }
 /* 程式版本（顯示在集章選單，方便確認手機是否已更新到最新版） */
-const APP_VERSION = '2026-11-08-v0';
+const APP_VERSION = '2026-11-08-v1';
 function appVersion() { return APP_VERSION; }
 /* 集章卡的蓋章距離（公尺，系統設定「集章偵測範圍」，預設 50） */
 function stampRange() { const n = Number(String(CFG.stampRangeM || '').replace(/[^\d.]/g, '')); return n > 0 ? n : 50; }
@@ -6292,6 +6297,7 @@ function mealMatch(d, meal) {
   return parts.some(x => x === meal || (/^[早午晚]+餐$/.test(x) && x.includes(meal[0])));   /* 早午餐＝早餐＋午餐，以此類推 */
 }
 const MOBILE_HIDE_FOOD_CHIPS = ['伴手禮', '水果'];   /* 手機版美食不顯示的分類按鈕 */
+const SUB_CHIP_COLORS = ['#dc2626', '#ea580c', '#ca8a04', '#16a34a', '#0891b2', '#2563eb', '#7c3aed', '#db2777', '#0d9488', '#d97706', '#4f46e5', '#65a30d'];
 function renderSubFilters() {
   const cats = activeType ? [...new Set(allData.filter(d => d.type === activeType && (!activeRegion || d.region === activeRegion))
     .flatMap(d => (activeType === '美食' ? d.mainCategory : d.category).split(/[／/]/).map(v => v.trim())).filter(Boolean))] : [];
@@ -6302,7 +6308,7 @@ function renderSubFilters() {
   }
   if (!activeType || cats.length < 2 || cats.length > 24) { subFilters.hidden = true; subFilters.innerHTML = ''; activeSub = ''; return; }
   if (activeSub && !cats.includes(activeSub)) activeSub = '';
-  subFilters.innerHTML = cats.map(c => `<button type="button" class="sub-chip${c === activeSub ? ' active' : ''}" data-sub="${esc(c)}">${esc(c)}</button>`).join('');
+  subFilters.innerHTML = cats.map((c, i) => `<button type="button" class="sub-chip${c === activeSub ? ' active' : ''}" data-sub="${esc(c)}" style="--sc:${SUB_CHIP_COLORS[i % SUB_CHIP_COLORS.length]}">${esc(c)}</button>`).join('');
   subFilters.hidden = false;
 }
 function applyFilter() {
@@ -6462,7 +6468,7 @@ function setRegionFromLocation() {
 function applyMapSettings() {
   sheetConfigs.forEach(s => { typeGlyph[s.type] = s.glyph; typeColor[s.type] = s.color; });
   regionSelect.innerHTML = '<option value="">全部區域</option>' + regionOrder.map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join('');
-  typeFilters.innerHTML = sheetConfigs.map(s => `<button type="button" class="filter" data-type="${esc(s.type)}">${esc(s.type)}</button>`).join('');
+  typeFilters.innerHTML = sheetConfigs.map(s => `<button type="button" class="filter" data-type="${esc(s.type)}" style="--fc:${s.color}">${esc(s.type)}</button>`).join('');
   legend.innerHTML = sheetConfigs.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${esc(s.type)}</span>`).join('')
     + '<span class="legend-item"><span class="legend-dot" style="background:linear-gradient(135deg,#f59e0b,#ef4444)"></span>活動</span>';
 }
