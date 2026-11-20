@@ -17,9 +17,9 @@
   /* 從同網域某個系統過來的，跳回那個系統 */
   var m = ref.match(/^https:\/\/bearbabybaby-ai\.github\.io\/([^\/?#]+)/i);
   if (m && OK.indexOf(m[1].toLowerCase()) >= 0) return go(m[1]);
-  /* 依本機紀錄跳回最後所在的系統 */
+  /* 同一個分頁剛才所在的系統（新視窗、新分頁不會有紀錄） */
   var last = '';
-  try { last = localStorage.getItem('bb-last-system') || ''; } catch (e) {}
+  try { last = sessionStorage.getItem('bb-last-system') || ''; localStorage.removeItem('bb-last-system'); } catch (e) {}
   if (last && OK.indexOf(last.toLowerCase()) >= 0) return go(last);
   /* 已安裝到桌面的熊熊綜合系統舊版 */
   if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) return go('bearbear');
