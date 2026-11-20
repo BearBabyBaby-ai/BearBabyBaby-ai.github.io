@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title></title>
+<style>html,body{margin:0;background:#fff}</style>
+<script>
+/* 主網域不顯示任何系統：有人刪掉網址後段時，直接跳回他原本所在的系統；沒有紀錄就只顯示空白 */
+(function () {
+  var OK = ['bearbear', 'bearbao', 'lantern-festival', 'penghu-bear-journey', 'bearbao-mini', 'penghu-food', 'bear-game'];
+  var go = function (s) { location.replace('/' + s + '/'); };
+  var ref = document.referrer || '';
+  /* 熊熊綜合系統舊版 APP 打開主網域時，轉到熊熊綜合系統 */
+  if (ref.indexOf('android-app://io.github.bearbabybaby_ai.twa') === 0) return go('bearbear');
+  /* 從同網域某個系統過來的，跳回那個系統 */
+  var m = ref.match(/^https:\/\/bearbabybaby-ai\.github\.io\/([^\/?#]+)/i);
+  if (m && OK.indexOf(m[1].toLowerCase()) >= 0) return go(m[1]);
+  /* 依本機紀錄跳回最後所在的系統 */
+  var last = '';
+  try { last = localStorage.getItem('bb-last-system') || ''; } catch (e) {}
+  if (last && OK.indexOf(last.toLowerCase()) >= 0) return go(last);
+  /* 已安裝到桌面的熊熊綜合系統舊版 */
+  if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) return go('bearbear');
+  /* 清掉舊的主網域背景程式，避免攔截其他系統 */
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function (list) {
+      list.forEach(function (r) { if (r.scope === location.origin + '/') r.unregister(); });
+    });
+  }
+})();
+</script>
+</head>
+<body></body>
+</html>
