@@ -19,6 +19,7 @@ button:hover{border-color:#5566c4}
 .zoom{display:flex;align-items:center;gap:8px}
 .zoom button{min-height:32px;padding:2px 11px}
 input[type=range]{width:min(180px,34vw);accent-color:#e8634a}
+.zoom .lb{font-size:13px;color:var(--dim)}
 .zoom output{font-size:13px;color:var(--dim);width:3.2em;text-align:end}
 main{flex:1;display:flex;min-height:0}
 #wrap{flex:1;position:relative;overflow:hidden}
@@ -46,6 +47,7 @@ aside .x{float:right;min-height:30px;padding:0 10px}
   <h1 id="ttl">專案索引</h1>
   <div class="ctl">
     <button id="bReset">重新排列</button>
+    <div class="zoom"><span class="lb">速度</span><input id="sp" type="range" min="0" max="300" value="100" aria-label="速度"><output id="spv">100%</output></div>
     <div class="zoom">
       <button id="zOut" aria-label="縮小">－</button>
       <input id="zr" type="range" min="40" max="200" value="100" aria-label="縮放">
@@ -169,7 +171,10 @@ function draw(){
   ctx.fillStyle=sys?'#ffe2a3':'#dfe5fa';ctx.shadowColor='#000';ctx.shadowBlur=sys?0:4;ctx.fillText(n.n,cx,ly+1);ctx.shadowBlur=0});
  ctx.globalAlpha=1;
 }
-function loop(){if(ready){TM=performance.now()/1000;draw()}requestAnimationFrame(loop)}
+/* 速度：0% 停止、100% 正常、300% 最快 */
+let SPD=1,last=performance.now();
+function loop(){const now=performance.now();TM+=(now-last)/1000*SPD;last=now;if(ready)draw();requestAnimationFrame(loop)}
+$('sp').addEventListener('input',()=>{SPD=+$('sp').value/100;$('spv').textContent=$('sp').value+'%'});
 function hit(mx,my){for(let k=nodes.length-1;k>=0;k--){const n=nodes[k],[x,y]=toS(n);if(Math.abs(mx-x)<=n.w*zoom/2&&Math.abs(my-y)<=n.h*zoom/2)return n}return null}
 function side(n){
  const sd=$('side');sel=n;if(!n){sd.className='';return}
