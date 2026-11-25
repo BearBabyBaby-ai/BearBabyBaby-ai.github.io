@@ -69,6 +69,23 @@
         .replace(/<meta[^>]+Content-Security-Policy[^>]*>/i, '')
         .replace(/<script[^>]*desk\.js[^>]*><\/script>/i, '')
         .replace(/src="bear-icon\.png"/, 'src="' + PET + 'bear-icon.png"');
+      /* 融入專案索引的右側資訊窗格：拿掉獨立視窗的外框、標題列，顏色跟頁面一樣 */
+      html = html.replace('</head>', '<style>' +
+        'html,body{background:#0b1024!important}' +
+        '#card{inset:0!important;border:0!important;border-radius:0!important;box-shadow:none!important;background:#0b1024!important}' +
+        'header{display:none!important}' +
+        'body,#log{color:#e8ecf8;font-family:"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif}' +
+        '.bear{background:#141b38!important;border-color:#2a3463!important;color:#e8ecf8}' +
+        '.me{background:#1d2550!important;color:#e8ecf8!important;border:1px solid #2a3463}' +
+        '.wait,.b-hint{color:#8f98bb!important}' +
+        '.b-link{color:#ffc861!important}' +
+        '.b-pub{border-color:#2a3463!important}' +
+        'form{border-top-color:#2a3463!important;background:#0b1024}' +
+        '#input{background:#141b38!important;color:#e8ecf8!important;border-color:#2a3463!important}' +
+        '#input:focus{border-color:#5566c4!important}' +
+        '#send{background:#141b38!important;color:#e8ecf8!important;border:1px solid #2a3463!important;border-radius:999px!important}' +
+        '.files button{background:#141b38!important;color:#e8ecf8!important;border-color:#2a3463!important}' +
+        '</style></head>');
       var keep = window.desk;
       document.open(); document.write(html); document.close();
       window.desk = keep;
