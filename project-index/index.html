@@ -121,12 +121,14 @@ function build(systems){
 const cv=$('cv'),ctx=cv.getContext('2d');
 let W=0,H=0,dpr=1;
 function size(){const r=cv.getBoundingClientRect();dpr=Math.min(devicePixelRatio||1,2);W=r.width;H=r.height;cv.width=W*dpr;cv.height=H*dpr}
-function boxW(n){ctx.font=n.t==='s'?'900 22px "Noto Sans TC",sans-serif':'13px "Noto Sans TC",sans-serif';return ctx.measureText(n.n).width+(n.t==='s'?36:18)}
+/* 每個點是光點，名稱標在光點下方；系統是大光球 */
+const RAD=n=>n.t==='s'?16:6;
+function boxW(n){ctx.font=n.t==='s'?'900 18px "Noto Sans TC",sans-serif':'12px "Noto Sans TC",sans-serif';return Math.max(ctx.measureText(n.n).width+(n.t==='s'?22:10),RAD(n)*5)}
 function place(){
  const R=330;
  SY.forEach((s,i)=>{const a=i/SY.length*Math.PI*2-Math.PI/2;s.x=Math.cos(a)*R;s.y=Math.sin(a)*R;s.vx=s.vy=0});
  FE.forEach(f=>{const ps=[...f.nb];let x=0,y=0;ps.forEach(p=>{x+=p.x;y+=p.y});const k=ps.length===1?1.5:.6;f.x=x/ps.length*k+(Math.random()-.5)*60;f.y=y/ps.length*k+(Math.random()-.5)*60;f.vx=f.vy=0});
- nodes.forEach(n=>{n.w=boxW(n);n.h=n.t==='s'?46:24});
+ nodes.forEach(n=>{n.w=boxW(n);n.h=n.t==='s'?66:34});
 }
 /* 力學：連線拉近、名稱框互相推開不重疊、整體往中心收；再加上很慢的漂移 */
 function step(drift){
@@ -145,17 +147,26 @@ function step(drift){
 const flo=(n,tm)=>{const p=n.x*.004+n.y*.003;return[Math.sin(tm*.55+p)*24+Math.sin(tm*.9+n.ph)*4,Math.cos(tm*.45+p*1.2)*20+Math.cos(tm*.8+n.ph)*4]};
 let TM=0;
 const toS=n=>{const[ox,oy]=n===drag?[0,0]:flo(n,TM);return[W/2+panX+(n.x+ox)*zoom,H/2+panY+(n.y+oy)*zoom]};
+const dotS=n=>{const[x,y]=toS(n);return[x,y+(-n.h/2+RAD(n)*2.2)*zoom]};
 function rel(n){const f=sel||hov;return !f||f===n||f.nb.has(n)}
 function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
 function draw(){
  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,H);
  const f=sel||hov;
- LK.forEach(l=>{const on=!f||l.s===f||l.f===f;const[x1,y1]=toS(l.s),[x2,y2]=toS(l.f),mx=(x1+x2)/2,my=(y1+y2)/2;
+ LK.forEach(l=>{const on=!f||l.s===f||l.f===f;const[x1,y1]=dotS(l.s),[x2,y2]=dotS(l.f),mx=(x1+x2)/2,my=(y1+y2)/2;
   ctx.strokeStyle=l.f.col;ctx.globalAlpha=f?(on?.9:.05):.35;ctx.lineWidth=f&&on?2.2:1.2;
   ctx.beginPath();ctx.moveTo(x1,y1);ctx.quadraticCurveTo(mx+(y2-y1)*.12,my-(x2-x1)*.12,x2,y2);ctx.stroke()});
- nodes.forEach(n=>{const[x,y]=toS(n),w=n.w*zoom,h=n.h*zoom,sys=n.t==='s';ctx.globalAlpha=rel(n)?1:.2;
-  if(sys){ctx.shadowColor='rgba(255,200,97,.55)';ctx.shadowBlur=18*zoom}rr(x-w/2,y-h/2,w,h,(sys?12:6)*zoom);ctx.fillStyle=sys?'#3a2a08':'#141b38';ctx.fill();ctx.shadowBlur=0;ctx.lineWidth=(f===n?2.6:(sys?2:1.2));ctx.strokeStyle=n.col;ctx.stroke();
-  ctx.fillStyle=n.t==='s'?'#ffe2a3':'#e3e8fb';ctx.font=`${sys?900:400} ${(sys?22:13)*zoom}px "Noto Sans TC",sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(n.n,x,y+1)});
+ const tm=TM;
+ nodes.forEach(n=>{const[cx,cy]=toS(n),sys=n.t==='s',r=RAD(n)*zoom,[x,y]=dotS(n),on=rel(n);ctx.globalAlpha=on?1:.18;
+  const gr=r*(sys?4.2:3.6),g=ctx.createRadialGradient(x,y,0,x,y,gr);g.addColorStop(0,n.col);g.addColorStop(.25,n.col+'99');g.addColorStop(1,n.col+'00');
+  ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,gr,0,7);ctx.fill();
+  ctx.fillStyle=sys?'#fff4d6':'#ffffff';ctx.beginPath();ctx.arc(x,y,r*(sys?.62:.55),0,7);ctx.fill();
+  if(sys){ctx.strokeStyle='rgba(255,200,97,.85)';ctx.lineWidth=1.4;ctx.beginPath();ctx.arc(x,y,r*1.25+Math.sin(tm*1.6+n.ph)*2*zoom,0,7);ctx.stroke()}
+  if(f===n){ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(x,y,r*(sys?1.7:2.2),0,7);ctx.stroke()}
+  const fs=(sys?18:12)*zoom,ly=y+r*(sys?1.6:1.6)+fs*.75;
+  ctx.font=`${sys?900:400} ${fs}px "Noto Sans TC",sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+  if(sys){const tw=ctx.measureText(n.n).width;rr(cx-tw/2-9*zoom,ly-fs*.75,tw+18*zoom,fs*1.5,6*zoom);ctx.fillStyle='rgba(58,42,8,.85)';ctx.fill();ctx.strokeStyle='#ffc861';ctx.lineWidth=1;ctx.stroke()}
+  ctx.fillStyle=sys?'#ffe2a3':'#dfe5fa';ctx.shadowColor='#000';ctx.shadowBlur=sys?0:4;ctx.fillText(n.n,cx,ly+1);ctx.shadowBlur=0});
  ctx.globalAlpha=1;
 }
 function loop(){if(ready){TM=performance.now()/1000;draw()}requestAnimationFrame(loop)}
