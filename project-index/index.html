@@ -39,7 +39,13 @@ aside .k{font-size:13px;color:var(--dim);margin:12px 0 6px}
 aside .tags{display:flex;flex-wrap:wrap;gap:6px}
 aside .tags b{font-weight:400;font-size:13px;padding:3px 10px;border-radius:999px;background:#1d2550;border:1px solid var(--line)}
 aside .x{float:right;min-height:30px;padding:0 10px}
-@media(max-width:700px){main{flex-direction:column}aside{width:auto;border-left:0;border-top:1px solid var(--line);max-height:40vh}}
+/* 左邊系統列表 */
+#list{width:min(210px,34vw);border-right:1px solid var(--line);padding:14px 10px;overflow:auto;display:flex;flex-direction:column;gap:6px}
+#list button{text-align:start;border-radius:10px;width:100%;font-size:15px;font-weight:700;color:#ffe2a3;background:#1a1d2e;border-color:#5a4720}
+#list button.on{background:#3a2a08;border-color:#ffc861}
+/* 右下角熊寶桌寵 */
+#pet{position:absolute;right:10px;bottom:4px;width:clamp(110px,14vw,170px);height:auto;pointer-events:none;z-index:2}
+@media(max-width:700px){main{flex-direction:column}#list{width:auto;flex-direction:row;flex-wrap:wrap;border-right:0;border-bottom:1px solid var(--line);max-height:30vh}#list button{width:auto}aside{width:auto;border-left:0;border-top:1px solid var(--line);max-height:40vh}}
 </style>
 </head>
 <body>
@@ -57,7 +63,8 @@ aside .x{float:right;min-height:30px;padding:0 10px}
   </div>
 </header>
 <main>
-  <div id="wrap"><div id="msg">讀取中…</div><canvas id="cv"></canvas></div>
+  <nav id="list"></nav>
+  <div id="wrap"><div id="msg">讀取中…</div><canvas id="cv"></canvas><img id="pet" src="https://raw.githubusercontent.com/BearBabyBaby-ai/bearbao/pet-assets/gifs/01_idle_blink.gif" alt="熊寶桌寵"></div>
   <aside id="side"></aside>
 </main>
 <script>
@@ -179,7 +186,7 @@ function loop(){const now=performance.now();TM+=(now-last)/1000*SPD;last=now;if(
 $('sp').addEventListener('input',()=>{SPD=+$('sp').value/100;$('spv').textContent=$('sp').value+'%'});
 function hit(mx,my){for(let k=nodes.length-1;k>=0;k--){const n=nodes[k],[x,y]=toS(n);if(Math.abs(mx-x)<=n.w*zoom/2&&Math.abs(my-y)<=n.h*zoom/2)return n}return null}
 function side(n){
- const sd=$('side');sel=n;if(!n){sd.className='';return}
+ const sd=$('side');sel=n;document.querySelectorAll('#list button').forEach(b=>b.classList.toggle('on',SY[+b.dataset.i]===n));if(!n){sd.className='';return}
  const tags=a=>`<div class="tags">${a.map(x=>`<b>${esc(x)}</b>`).join('')}</div>`;
  if(n.t==='f'){
   const ss=LK.filter(l=>l.f===n).map(l=>l.s.n);
@@ -206,7 +213,7 @@ $('zIn').onclick=()=>setZoom(+zr.value+10);$('zOut').onclick=()=>setZoom(+zr.val
 $('bReset').onclick=()=>{panX=panY=0;side(null);place();for(let i=0;i<400;i++)step(false);fit()};
 function fit(){let mx=1,my=1;nodes.forEach(n=>{mx=Math.max(mx,Math.abs(n.x)+n.w/2);my=Math.max(my,Math.abs(n.y)+n.h/2)});setZoom(Math.round(Math.max(40,Math.min(100,Math.min(W/2/mx,H/2/my)*95))))}
 addEventListener('resize',size);
-load().then(s=>{build(s);size();place();for(let i=0;i<400;i++)step(false);fit();$('msg').remove();ready=true;loop();
+load().then(s=>{build(s);$('list').innerHTML=SY.map(x=>`<button data-i="${x.i}">${esc(x.n)}</button>`).join('');$('list').onclick=e=>{const b=e.target.closest('button');if(!b)return;const n=SY[+b.dataset.i];side(sel===n?null:n)};size();place();for(let i=0;i<400;i++)step(false);fit();$('msg').remove();ready=true;loop();
 }).catch(e=>{$('msg').textContent='讀取失敗，請稍後重新整理'});
 }
 </script>
