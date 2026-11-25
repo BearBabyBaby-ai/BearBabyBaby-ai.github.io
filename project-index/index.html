@@ -66,6 +66,7 @@ const OWNER='BearBabyBaby-ai';
 /* 不列入的程式庫 */
 const SKIP=['bear-game','adsb-list','bearbabybaby-ai.github.io','repository-name'];
 /* 已知系統的中文名稱；新程式庫會自動用它網頁的標題 */
+const KNOWN=['bearbear','bearbao','bearbao-mini','Lantern-Festival','penghu-bear-journey','penghu-food'];
 const NAME={'bearbear':'熊熊綜合系統','bearbao':'熊寶系統','bearbao-mini':'熊寶小資訊','lantern-festival':'2027澎湖元宵','penghu-bear-journey':'熊熊澎湖之旅','penghu-food':'澎湖資訊推薦'};
 /* 功能分類與判斷用的關鍵字（程式碼裡出現兩次以上才算有這項功能） */
 const CATS=[
@@ -87,11 +88,18 @@ const raw=(repo,br,p)=>`https://raw.githubusercontent.com/${OWNER}/${repo}/${br}
 const count=(txt,kws)=>kws.reduce((s,k)=>s+txt.split(k).length-1,0);
 
 async function load(){
- const repos=(await j(`https://api.github.com/users/${OWNER}/repos?per_page=100`)).filter(r=>!r.fork&&r.size>0&&!SKIP.includes(r.name.toLowerCase()));
+ /* GitHub 每小時只給 60 次查詢，所以只查一次程式庫清單；查不到時用目前已知的系統，不會整頁失敗 */
+ let list;
+ try{list=await j(`https://api.github.com/users/${OWNER}/repos?per_page=100`)}
+ catch(e){list=KNOWN.map(n=>({name:n,default_branch:'main',size:1,fork:false}))}
+ const repos=list.filter(r=>!r.fork&&r.size>0&&!SKIP.includes(r.name.toLowerCase()));
  const systems=[];
- await Promise.all(repos.map(async r=>{
+ await Promise.all(repos.map(async r=>{try{
   const br=r.default_branch;
-  const tree=(await j(`https://api.github.com/repos/${OWNER}/${r.name}/git/trees/${br}?recursive=1`)).tree.filter(x=>x.type==='blob');
+  /* 檔案清單改從 jsDelivr 取得，不佔 GitHub 查詢次數；取不到才用 GitHub */
+  let tree;
+  try{tree=(await j(`https://data.jsdelivr.com/v1/packages/gh/${OWNER}/${r.name}@${br}?structure=flat`)).files.map(x=>({path:x.name.replace(/^\//,''),size:x.size,type:'blob'}))}
+  catch(e){tree=(await j(`https://api.github.com/repos/${OWNER}/${r.name}/git/trees/${br}?recursive=1`)).tree.filter(x=>x.type==='blob')}
   /* 程式庫裡獨立成另一支程式的資料夾（例如桌寵程式） */
   const subs=[...new Set(tree.filter(x=>/^[^\/]+-app\/package\.json$/.test(x.path)).map(x=>x.path.split('/')[0]))];
   const files=tree.filter(x=>CODE.test(x.path)&&!BAD.test(x.path)&&!/\.min\.js$|(^|\/)sw\.js$/.test(x.path)&&x.size<3e6);
@@ -104,7 +112,8 @@ async function load(){
    const pk=await t(raw(r.name,br,s+'/package.json'));let nm=s;try{nm=JSON.parse(pk).productName||s}catch(e){}
    systems.push({n:nm,u:`https://github.com/${OWNER}/${r.name}/releases`,txt:await read(files.filter(x=>x.path.startsWith(s+'/'))),at:r.pushed_at});
   }
- }));
+ }catch(e){}}));
+ if(!systems.length)throw new Error('none');
  systems.sort((a,b)=>a.n.localeCompare(b.n,'zh-Hant'));
  return systems;
 }
