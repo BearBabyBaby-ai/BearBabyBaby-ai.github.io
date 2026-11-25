@@ -63,11 +63,6 @@ aside .x{float:right;min-height:30px;padding:0 10px}
 <script>
 {
 const OWNER='BearBabyBaby-ai';
-/* 不列入的程式庫 */
-const SKIP=['bear-game','adsb-list','bearbabybaby-ai.github.io','repository-name'];
-/* 已知系統的中文名稱；新程式庫會自動用它網頁的標題 */
-const KNOWN=['bearbear','bearbao','bearbao-mini','Lantern-Festival','penghu-bear-journey','penghu-food'];
-const NAME={'bearbear':'熊熊綜合系統','bearbao':'熊寶系統','bearbao-mini':'熊寶小資訊','lantern-festival':'2027澎湖元宵','penghu-bear-journey':'熊熊澎湖之旅','penghu-food':'澎湖資訊推薦'};
 /* 功能分類與判斷用的關鍵字（程式碼裡出現兩次以上才算有這項功能） */
 const CATS=[
  ['在地資料','#6fa8ff',[['美食',['美食']],['景點',['景點']],['廟宇',['廟宇']],['其他店家',['其他店家']],['行程業者',['行程業者']],['港口與遊客中心',['遊客中心']]]],
@@ -77,52 +72,50 @@ const CATS=[
  ['活動廟宇','#ff6f7d',[['月曆活動',['月曆']],['元宵資訊',['元宵']],['花火節',['花火']],['集章',['集章']],['主祀判斷',['主祀']]]],
  ['個人管理','#b68cff',[['重要資訊提醒',['重要資訊提醒']],['財務管理',['財務']],['機票搶票提醒',['搶票']],['特殊日期生日',['特殊日期']],['工作模式查詢',['工作模式']],['後台編修',['後台']]]]
 ];
-const BAD=/(^|\/)(lib|libs|node_modules|tests?|assets|icons|scripts|tools|sources|docs|google-sites|build|apk|\.github|native\/www|www\/lib|leaflet|markercluster)\//i;
-const CODE=/\.(html|js|cjs|mjs)$/i;
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const $=id=>document.getElementById(id);
 
+/* 不列入的程式庫 */
+const SKIP=['bear-game','adsb-list','bearbabybaby-ai.github.io','repository-name'];
+/* 已知系統的中文名稱；新程式庫會自動用它網頁的標題 */
+const KNOWN=['bearbear','bearbao','bearbao-mini','Lantern-Festival','penghu-bear-journey','penghu-food'];
+const NAME={'bearbear':'熊熊綜合系統','bearbao':'熊寶系統','bearbao-mini':'熊寶小資訊','lantern-festival':'2027澎湖元宵','penghu-bear-journey':'熊熊澎湖之旅','penghu-food':'澎湖資訊推薦'};
+const BAD=/(^|\/)(lib|libs|node_modules|tests?|assets|icons|scripts|tools|sources|docs|google-sites|build|apk|\.github|native\/www|www\/lib|leaflet|markercluster)\//i;
+const CODE=/\.(html|js|cjs|mjs)$/i;
 async function j(u){const r=await fetch(u);if(!r.ok)throw new Error(r.status);return r.json()}
 async function t(u){try{const r=await fetch(u);return r.ok?await r.text():''}catch(e){return ''}}
 const raw=(repo,br,p)=>`https://raw.githubusercontent.com/${OWNER}/${repo}/${br}/${p.split('/').map(encodeURIComponent).join('/')}`;
 const count=(txt,kws)=>kws.reduce((s,k)=>s+txt.split(k).length-1,0);
-
-async function load(){
- /* GitHub 每小時只給 60 次查詢，所以只查一次程式庫清單；查不到時用目前已知的系統，不會整頁失敗 */
- let list;
- try{list=await j(`https://api.github.com/users/${OWNER}/repos?per_page=100`)}
- catch(e){list=KNOWN.map(n=>({name:n,default_branch:'main',size:1,fork:false}))}
- const repos=list.filter(r=>!r.fork&&r.size>0&&!SKIP.includes(r.name.toLowerCase()));
+/* 每次打開都直接掃描 GitHub 上各系統的程式碼 */
+async function live(){
+const repos=(await j(`https://api.github.com/users/${OWNER}/repos?per_page=100`)).filter(r=>!r.fork&&r.size>0&&!SKIP.includes(r.name.toLowerCase()));
  const systems=[];
- await Promise.all(repos.map(async r=>{try{
+ for(const r of repos){
   const br=r.default_branch;
-  /* 檔案清單改從 jsDelivr 取得，不佔 GitHub 查詢次數；取不到才用 GitHub */
-  let tree;
-  try{tree=(await j(`https://data.jsdelivr.com/v1/packages/gh/${OWNER}/${r.name}@${br}?structure=flat`)).files.map(x=>({path:x.name.replace(/^\//,''),size:x.size,type:'blob'}))}
-  catch(e){tree=(await j(`https://api.github.com/repos/${OWNER}/${r.name}/git/trees/${br}?recursive=1`)).tree.filter(x=>x.type==='blob')}
-  /* 程式庫裡獨立成另一支程式的資料夾（例如桌寵程式） */
+  const tree=(await j(`https://api.github.com/repos/${OWNER}/${r.name}/git/trees/${br}?recursive=1`)).tree.filter(x=>x.type==='blob');
   const subs=[...new Set(tree.filter(x=>/^[^\/]+-app\/package\.json$/.test(x.path)).map(x=>x.path.split('/')[0]))];
   const files=tree.filter(x=>CODE.test(x.path)&&!BAD.test(x.path)&&!/\.min\.js$|(^|\/)sw\.js$/.test(x.path)&&x.size<3e6);
   const read=async list=>(await Promise.all(list.map(x=>t(raw(r.name,br,x.path))))).join('\n');
-  const mainFiles=files.filter(x=>!subs.some(s=>x.path.startsWith(s+'/')));
+  const feats=txt=>CATS.flatMap(([,,fs])=>fs.filter(([,kw])=>count(txt,kw)>=2).map(([fn])=>fn));
   let name=NAME[r.name.toLowerCase()];
-  if(!name){const idx=tree.find(x=>/(^|\/)index\.html$/.test(x.path));const h=idx?await t(raw(r.name,br,idx.path)):'';name=(h.match(/<title>([^<]+)/)||[])[1]||r.name}
-  systems.push({n:name.trim(),u:r.homepage||`https://${OWNER.toLowerCase()}.github.io/${r.name}/`,txt:await read(mainFiles),at:r.pushed_at});
+  if(!name){const idx=tree.find(x=>/(^|\/)index\.html$/.test(x.path));const h=idx?await t(raw(r.name,br,idx.path)):'';name=((h.match(/<title>([^<]+)/)||[])[1]||r.name).trim()}
+  systems.push({n:name,u:r.homepage||`https://${OWNER.toLowerCase()}.github.io/${r.name}/`,f:feats(await read(files.filter(x=>!subs.some(s=>x.path.startsWith(s+'/')))))});
   for(const s of subs){
-   const pk=await t(raw(r.name,br,s+'/package.json'));let nm=s;try{nm=JSON.parse(pk).productName||s}catch(e){}
-   systems.push({n:nm,u:`https://github.com/${OWNER}/${r.name}/releases`,txt:await read(files.filter(x=>x.path.startsWith(s+'/'))),at:r.pushed_at});
+   let nm=s;try{nm=JSON.parse(await t(raw(r.name,br,s+'/package.json'))).productName||s}catch(e){}
+   systems.push({n:nm,u:`https://github.com/${OWNER}/${r.name}/releases`,f:feats(await read(files.filter(x=>x.path.startsWith(s+'/'))))});
   }
- }catch(e){}}));
- if(!systems.length)throw new Error('none');
+ }
  systems.sort((a,b)=>a.n.localeCompare(b.n,'zh-Hant'));
  return systems;
 }
+/* GitHub 每小時只給 60 次查詢；用完時改讀最近一次掃描的結果，不會讀取失敗 */
+async function load(){try{return await live()}catch(e){const r=await fetch('data.json?'+Date.now(),{cache:'no-store'});if(!r.ok)throw e;return (await r.json()).systems}}
 
 let SY=[],FE=[],LK=[],nodes=[],zoom=1,panX=0,panY=0,sel=null,hov=null,ready=false;
 function build(systems){
  SY=systems.map((s,i)=>({i,n:s.n,u:s.u,t:'s',col:'#ffc861'}));FE=[];LK=[];
  CATS.forEach(([cn,col,fs])=>fs.forEach(([fn,kw])=>{
-  const owners=systems.map((s,i)=>count(s.txt,kw)>=2?i:-1).filter(i=>i>=0);
+  const owners=systems.map((s,i)=>s.f.includes(fn)?i:-1).filter(i=>i>=0);
   if(!owners.length)return;
   const f={i:FE.length,n:fn,c:cn,col,t:'f'};FE.push(f);owners.forEach(o=>LK.push({s:SY[o],f}));
  }));
