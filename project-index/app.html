@@ -6,33 +6,31 @@
 <meta name="robots" content="noindex, nofollow">
 <title>專案索引</title>
 <style>
-:root{--bg:#0b1024;--panel:#141b38;--ink:#e8ecf8;--dim:#8f98bb;--line:#2a3463;--gold:#ffc861}
+:root{--ink:#000000;--dim:#6b5a44;--line:#e2cba6;--frame:#876c4b;--head:#f6e7cf;--label:#fbf3e4;--blue:#0a6fb3;--bg1:#eaf6fb;--bg2:#f3fbf2}
+/* 色調比照熊寶系統電腦版的熊寶桌寵對話框：底色跟著時間區段（清晨、白天、傍晚、晚上） */
+body[data-tod="dawn"]{--bg1:#fff1e8;--bg2:#e8f0fb}
+body[data-tod="day"]{--bg1:#eaf6fb;--bg2:#f3fbf2}
+body[data-tod="dusk"]{--bg1:#ffe9dc;--bg2:#f7d9d3}
+body[data-tod="night"]{--bg1:#18213f;--bg2:#28305c}
 *{box-sizing:border-box;min-width:0}
 html,body{height:100%;margin:0}
-body{overflow:hidden;background:var(--bg);color:var(--ink);font:15px/1.5 "Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;display:flex;flex-direction:column}
-header{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;padding:12px max(2vw,12px);border-bottom:1px solid var(--line)}
+body{overflow:hidden;background:linear-gradient(180deg,var(--bg1),var(--bg2));color:var(--ink);font:15px/1.5 "Microsoft JhengHei","微軟正黑體","Noto Sans TC",system-ui,sans-serif;display:flex;flex-direction:column;transition:background .8s}
+header{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;padding:10px max(2vw,12px);background:var(--head);border-bottom:1.5px solid var(--line)}
 h1{margin:0;font-size:clamp(17px,2.2vw,22px);font-weight:900}
 h1 span{color:var(--dim);font-weight:400;font-size:.72em;margin-inline-start:8px}
 .ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-button{font:inherit;font-size:14px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:7px 15px;min-height:38px;cursor:pointer}
-button:hover{border-color:#5566c4}
+button{font:inherit;font-size:14px;color:var(--blue);background:#fff;border:1.5px solid var(--blue);border-radius:10px;padding:6px 14px;min-height:36px;cursor:pointer}
+button:hover{background:#e8f2fa}
 .zoom{display:flex;align-items:center;gap:8px}
 .zoom button{min-height:32px;padding:2px 11px}
-input[type=range]{width:min(180px,34vw);accent-color:#e8634a}
+input[type=range]{width:min(180px,34vw);accent-color:var(--blue)}
 .zoom .lb{font-size:13px;color:var(--dim)}
-.zoom output{font-size:13px;color:var(--dim);width:3.2em;text-align:end}
+.zoom output{font-size:13px;color:var(--dim);width:3.6em;text-align:end}
 main{flex:1;display:flex;min-height:0}
 #wrap{flex:1;position:relative;overflow:hidden}
 #cv{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:none}
-#msg{position:absolute;inset:0}
-#msg{color:var(--dim);padding:40px 20px;font-size:16px;z-index:1}
-svg text{font-family:inherit;dominant-baseline:middle}
-.lk{fill:none;transition:opacity .25s}
-.nd{cursor:pointer}
-.nd rect{stroke-width:1}
-.nd{transition:opacity .25s}.nd.dim{opacity:.25}
-.open{fill:var(--gold);font-size:12px;cursor:pointer}
-aside{width:min(360px,42vw);border-left:1px solid var(--line);display:none;flex-direction:column;min-height:0}
+#msg{position:absolute;inset:0;color:var(--dim);padding:40px 20px;font-size:16px;z-index:1}
+aside{width:min(360px,42vw);border-left:1.5px solid var(--line);display:none;flex-direction:column;min-height:0;background:linear-gradient(180deg,var(--bg1),var(--bg2))}
 aside.on{display:flex}
 #info{padding:16px;overflow:auto;flex:none;max-height:100%}
 #info:empty{display:none}
@@ -40,19 +38,23 @@ aside.chat #info{display:none}
 aside h2{margin:0 0 6px;font-size:19px}
 aside .k{font-size:13px;color:var(--dim);margin:12px 0 6px}
 aside .tags{display:flex;flex-wrap:wrap;gap:6px}
-aside .tags b{font-weight:400;font-size:13px;padding:3px 10px;border-radius:999px;background:#1d2550;border:1px solid var(--line)}
+aside .tags b{font-weight:400;font-size:13px;padding:3px 10px;border-radius:999px;background:#fff;border:1.5px solid var(--line);color:#000}
 aside .x{float:right;min-height:30px;padding:0 10px}
+aside a{color:var(--blue)!important}
+body[data-tod="night"] aside h2,body[data-tod="night"] h1 span{color:#fff}
+body[data-tod="night"] aside .k{color:#c8cfe8}
+body[data-tod="night"] aside{border-left-color:#3a4472}
 /* 左邊系統列表 */
-#list{width:min(210px,34vw);border-right:1px solid var(--line);padding:14px 10px;overflow:auto;display:flex;flex-direction:column;gap:6px}
-#list button{text-align:start;border-radius:10px;width:100%;font-size:15px;font-weight:700;color:#ffe2a3;background:#1a1d2e;border-color:#5a4720}
-#list button.on{background:#3a2a08;border-color:#ffc861}
-/* 右下角熊寶桌寵 */
-/* 熊寶工作中對話框（和熊寶桌寵一樣） */
+#list{width:min(210px,34vw);border-right:1.5px solid var(--line);padding:14px 10px;overflow:auto;display:flex;flex-direction:column;gap:6px;background:var(--label)}
+#list button{text-align:start;border-radius:10px;width:100%;font-size:15px;font-weight:700;color:#000;background:#fff;border:1.5px solid var(--line)}
+#list button:hover{background:#fdf6ea}
+#list button.on{background:var(--head);border-color:var(--frame)}
+/* 熊寶查詢（和熊寶桌寵一樣） */
 #deskBox{flex:1;min-height:0;display:none}
 aside.chat #deskBox{display:block}
-#desk{width:100%;height:100%;border:0;background:var(--bg);display:block}
+#desk{width:100%;height:100%;border:0;background:transparent;display:block}
 #pet{position:absolute;right:10px;bottom:4px;width:clamp(110px,14vw,170px);height:auto;cursor:pointer;z-index:2}
-@media(max-width:700px){main{flex-direction:column}#list{width:auto;flex-direction:row;flex-wrap:wrap;border-right:0;border-bottom:1px solid var(--line);max-height:30vh}#list button{width:auto}aside{width:auto;border-left:0;border-top:1px solid var(--line);max-height:40vh}}
+@media(max-width:700px){main{flex-direction:column}#list{width:auto;flex-direction:row;flex-wrap:wrap;border-right:0;border-bottom:1.5px solid var(--line);max-height:30vh}#list button{width:auto}aside{width:auto;border-left:0;border-top:1.5px solid var(--line);max-height:40vh}}
 </style>
 </head>
 <body>
@@ -60,7 +62,7 @@ aside.chat #deskBox{display:block}
   <h1 id="ttl">專案索引</h1>
   <div class="ctl">
     <button id="bReset">重新排列</button>
-    <div class="zoom"><span class="lb">速度</span><input id="sp" type="range" min="0" max="300" value="100" aria-label="速度"><output id="spv">100%</output></div>
+    <div class="zoom"><span class="lb">速度</span><input id="sp" type="range" min="0" max="1000" step="10" value="100" aria-label="速度"><output id="spv">100%</output></div>
     <div class="zoom">
       <span class="lb">縮放</span><button id="zOut" aria-label="縮小">－</button>
       <input id="zr" type="range" min="40" max="200" value="100" aria-label="縮放">
@@ -136,6 +138,10 @@ function build(systems){
  nodes=[...SY,...FE];nodes.forEach((n,i)=>n.ph=i*2.399);nodes.forEach(n=>n.nb=new Set());LK.forEach(l=>{l.s.nb.add(l.f);l.f.nb.add(l.s)});
  $('ttl').innerHTML=`專案索引<span>${SY.length} 個系統・${FE.length} 項功能・${LK.length} 條關聯</span>`;
 }
+/* 底色時間區段（台灣時間），和熊寶桌寵對話框一樣 */
+function tod(){const h=Number(new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Taipei',hour:'2-digit',hour12:false}).format(new Date()))%24;document.body.dataset.tod=h>=5&&h<7?'dawn':h>=7&&h<17?'day':h>=17&&h<19?'dusk':'night'}
+tod();setInterval(tod,60000);
+const NIGHT=()=>document.body.dataset.tod==='night';
 const cv=$('cv'),ctx=cv.getContext('2d');
 let W=0,H=0,dpr=1;
 function size(){const r=cv.getBoundingClientRect();dpr=Math.min(devicePixelRatio||1,2);W=r.width;H=r.height;cv.width=W*dpr;cv.height=H*dpr}
@@ -174,8 +180,9 @@ function draw(){
  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,H);
  const f=sel||hov,qm=!f&&Q;
  LK.forEach(l=>{const on=qm?Q.includes(l.f):(!f||l.s===f||l.f===f);const[x1,y1]=dotS(l.s),[x2,y2]=dotS(l.f),mx=(x1+x2)/2,my=(y1+y2)/2;
-  ctx.strokeStyle=l.f.col;ctx.globalAlpha=(f||qm)?(on?.9:.05):.35;ctx.lineWidth=(f||qm)&&on?2.2:1.2;
-  ctx.beginPath();ctx.moveTo(x1,y1);ctx.quadraticCurveTo(mx+(y2-y1)*.12,my-(x2-x1)*.12,x2,y2);ctx.stroke()});
+  /* 線條：平常是細的淡色直線；點選時才用該功能的顏色加粗 */
+  const hl=(f||qm)&&on;ctx.strokeStyle=hl?l.f.col:(NIGHT()?'#c8cfe8':'#876c4b');ctx.globalAlpha=(f||qm)?(on?.95:.04):(NIGHT()?.18:.16);ctx.lineWidth=hl?2:.8;
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke()});
  const tm=TM;
  nodes.forEach(n=>{const[cx,cy]=toS(n),sys=n.t==='s',r=RAD(n)*zoom,[x,y]=dotS(n),on=rel(n);ctx.globalAlpha=on?1:.18;
   const gr=r*(sys?4.2:3.6),g=ctx.createRadialGradient(x,y,0,x,y,gr);g.addColorStop(0,n.col);g.addColorStop(.25,n.col+'99');g.addColorStop(1,n.col+'00');
@@ -185,11 +192,11 @@ function draw(){
   if(f===n||(qm&&Q.includes(n))){ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(x,y,r*(sys?1.7:2.2),0,7);ctx.stroke()}
   const fs=(sys?18:12)*zoom,ly=y+r*(sys?1.6:1.6)+fs*.75;
   ctx.font=`${sys?900:400} ${fs}px "Noto Sans TC",sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';
-  if(sys){const tw=ctx.measureText(n.n).width;rr(cx-tw/2-9*zoom,ly-fs*.75,tw+18*zoom,fs*1.5,6*zoom);ctx.fillStyle='rgba(58,42,8,.85)';ctx.fill();ctx.strokeStyle='#ffc861';ctx.lineWidth=1;ctx.stroke()}
-  ctx.fillStyle=sys?'#ffe2a3':'#dfe5fa';ctx.shadowColor='#000';ctx.shadowBlur=sys?0:4;ctx.fillText(n.n,cx,ly+1);ctx.shadowBlur=0});
+  if(sys){const tw=ctx.measureText(n.n).width;rr(cx-tw/2-9*zoom,ly-fs*.75,tw+18*zoom,fs*1.5,6*zoom);ctx.fillStyle='#f6e7cf';ctx.fill();ctx.strokeStyle='#876c4b';ctx.lineWidth=1.5;ctx.stroke()}
+  ctx.fillStyle=sys?'#000':(NIGHT()?'#e8ecf8':'#2b2b2b');ctx.shadowColor=NIGHT()?'#000':'#fff';ctx.shadowBlur=sys?0:4;ctx.fillText(n.n,cx,ly+1);ctx.shadowBlur=0});
  ctx.globalAlpha=1;
 }
-/* 速度：0% 停止、100% 正常、300% 最快 */
+/* 速度：0% 停止、100% 正常、1000% 最快 */
 let SPD=1,last=performance.now();
 function loop(){const now=performance.now();TM+=(now-last)/1000*SPD;last=now;if(ready)draw();requestAnimationFrame(loop)}
 $('sp').addEventListener('input',()=>{SPD=+$('sp').value/100;$('spv').textContent=$('sp').value+'%'});
