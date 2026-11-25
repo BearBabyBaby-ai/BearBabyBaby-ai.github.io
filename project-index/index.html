@@ -9,7 +9,7 @@
 :root{--bg:#0b1024;--panel:#141b38;--ink:#e8ecf8;--dim:#8f98bb;--line:#2a3463;--gold:#ffc861}
 *{box-sizing:border-box;min-width:0}
 html,body{height:100%;margin:0}
-body{background:var(--bg);color:var(--ink);font:15px/1.5 "Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;display:flex;flex-direction:column}
+body{overflow:hidden;background:var(--bg);color:var(--ink);font:15px/1.5 "Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;display:flex;flex-direction:column}
 header{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;padding:12px max(2vw,12px);border-bottom:1px solid var(--line)}
 h1{margin:0;font-size:clamp(17px,2.2vw,22px);font-weight:900}
 h1 span{color:var(--dim);font-weight:400;font-size:.72em;margin-inline-start:8px}
@@ -24,12 +24,10 @@ main{flex:1;display:flex;min-height:0}
 #wrap{flex:1;overflow:auto;padding:16px}
 #msg{color:var(--dim);padding:40px 20px;font-size:16px}
 svg text{font-family:inherit;dominant-baseline:middle}
-.lk{fill:none;stroke:#3a4680;stroke-width:1.4}
-.lk.hl{stroke:var(--gold);stroke-width:2.2}
+.lk{fill:none;transition:opacity .25s}
 .nd{cursor:pointer}
 .nd rect{stroke-width:1}
-.nd.dim{opacity:.28}
-.nd.hl rect{stroke:var(--gold);stroke-width:2}
+.nd{transition:opacity .25s}.nd.dim{opacity:.25}
 .open{fill:var(--gold);font-size:12px;cursor:pointer}
 aside{width:min(300px,42vw);border-left:1px solid var(--line);padding:16px;overflow:auto;display:none}
 aside.on{display:block}
@@ -45,8 +43,6 @@ aside .x{float:right;min-height:30px;padding:0 10px}
 <header>
   <h1 id="ttl">專案索引</h1>
   <div class="ctl">
-    <button id="bOpen">全部展開</button>
-    <button id="bClose">全部收合</button>
     <div class="zoom">
       <button id="zOut" aria-label="縮小">－</button>
       <input id="zr" type="range" min="40" max="200" value="100" aria-label="縮放">
@@ -108,98 +104,77 @@ async function load(){
  return systems;
 }
 
-let root=null,zoom=1,sel=null;
+let SY=[],FE=[],LK=[],zoom=1,sel=null,hov=null;
 function build(systems){
- root={n:'專案索引',kids:[],open:true,d:0};
- let feats=new Set(),links=0;
- systems.forEach(s=>{
-  const sn={n:s.n,u:s.u,kids:[],open:true,d:1,sys:1};
-  CATS.forEach(([cn,col,fs])=>{
-   const has=fs.filter(([fn,kw])=>count(s.txt,kw)>=2);
-   if(!has.length)return;
-   const cnode={n:cn,col,kids:[],open:true,d:2};
-   has.forEach(([fn])=>{cnode.kids.push({n:fn,col,d:3,feat:1,sys:sn});feats.add(fn);links++});
-   sn.kids.push(cnode);
-  });
-  root.kids.push(sn);
- });
- $('ttl').innerHTML=`專案索引<span>${systems.length} 個系統・${feats.size} 項功能・${links} 條關聯</span>`;
+ SY=systems.map((s,i)=>({i,n:s.n,u:s.u,t:'s'}));FE=[];LK=[];
+ CATS.forEach(([cn,col,fs])=>fs.forEach(([fn,kw])=>{
+  const owners=systems.map((s,i)=>count(s.txt,kw)>=2?i:-1).filter(i=>i>=0);
+  if(!owners.length)return;
+  const f={i:FE.length,n:fn,c:cn,col,t:'f'};FE.push(f);owners.forEach(o=>LK.push({s:SY[o],f}));
+ }));
+ $('ttl').innerHTML=`專案索引<span>${SY.length} 個系統・${FE.length} 項功能・${LK.length} 條關聯</span>`;
 }
-function all(n,f){f(n);(n.kids||[]).forEach(k=>all(k,f))}
-const COLX=[0,150,330,470],ROW=26;
+const ROW=30,GAP=26,SX=0,FX=520,SW=150;
 function layout(){
- let i=0;
- (function walk(n){n.x=COLX[n.d];if(n.kids&&n.kids.length&&n.open){n.kids.forEach(walk);n.y=(n.kids[0].y+n.kids[n.kids.length-1].y)/2}else{n.y=i++*ROW}})(root);
- return i;
+ let y=0,last='';const heads=[];
+ FE.forEach(f=>{if(f.c!==last){if(last)y+=GAP;heads.push({n:f.c,col:f.col,y});y+=ROW;last=f.c}f.y=y;y+=ROW});
+ const H=y,step=H/(SY.length);
+ SY.forEach((s,i)=>s.y=step*(i+.5));
+ return {H,heads};
 }
-function w(n){return n.n.length*(n.d===1?15.5:13.5)+(n.d===1?22:18)}
+const fw=f=>f.n.length*13.5+20;
+let paths=[],sg=[],fg=[];
 function draw(){
- const rows=layout(),W=COLX[3]+190,H=rows*ROW+20,svg=$('tree');
- svg.setAttribute('viewBox',`-10 -14 ${W} ${H}`);svg.setAttribute('width',W*zoom);svg.setAttribute('height',H*zoom);
- const hlName=sel&&sel.feat?sel.n:null,hlSys=sel&&sel.sys&&!sel.feat?sel:null;
- let L='',N='';drawn=[];shown=[];
- (function walk(n){
-  if(!(n.kids&&n.open))return;
-  n.kids.forEach(k=>{
-   const x1=n.x+w(n),y1=n.y,x2=k.x,y2=k.y,mx=(x1+x2)/2;
-   const on=(hlName&&k.feat&&k.n===hlName)||(hlName&&!k.feat&&has(k,hlName))||(hlSys&&(k===hlSys||n===hlSys||isIn(k,hlSys)));
-   drawn.push([n,k]);L+=`<path class="lk${on?' hl':''}" d="M${x1},${y1}C${mx},${y1} ${mx},${y2} ${x2},${y2}"/>`;
-   walk(k);
-  });
- })(root);
- all(root,n=>{
-  if(n.d>0&&!visible(n))return;
-  const col=n.d===0?'#ffc861':n.d===1?'#ffc861':n.col;
-  const fill=n.d<=1?'#3a2a08':'#141b38';
-  const hl=(hlName&&n.feat&&n.n===hlName)||(hlSys&&(n===hlSys));
-  const dim=hlName&&n.feat&&n.n!==hlName;
-  const fold=n.kids&&n.kids.length&&!n.open?' ＋':'';shown.push(n);
-  N+=`<g class="nd${hl?' hl':''}${dim?' dim':''}" data-id="${n.id}" transform="translate(${n.x},${n.y})"><rect x="0" y="-11" rx="6" width="${w(n)+(fold?14:0)}" height="22" fill="${fill}" stroke="${col}"/><text x="${n.d===1?11:9}" y="1" fill="${n.d<=1?'#ffe2a3':'#e3e8fb'}" font-size="${n.d<=1?15:13}" font-weight="${n.d<=1?700:400}">${esc(n.n)}${fold}</text></g>`;
- });
- svg.innerHTML=L+N;
- paths=[...svg.querySelectorAll('path')];groups=[...svg.querySelectorAll('.nd')];
+ const {H,heads}=layout(),W=FX+260,svg=$('tree');
+ svg.setAttribute('viewBox',`-6 -18 ${W} ${H+24}`);svg.setAttribute('width',W*zoom);svg.setAttribute('height',(H+24)*zoom);
+ let h='';
+ LK.forEach((l,i)=>h+=`<path class="lk" data-i="${i}" stroke="${l.f.col}"/>`);
+ heads.forEach(c=>h+=`<text x="${FX}" y="${c.y}" fill="${c.col}" font-size="13" font-weight="700">${esc(c.n)}</text>`);
+ SY.forEach(s=>h+=`<g class="nd" data-t="s" data-i="${s.i}"><rect x="0" y="-14" rx="8" width="${SW}" height="28" fill="#3a2a08" stroke="#ffc861"/><text x="12" y="1" fill="#ffe2a3" font-size="15" font-weight="700">${esc(s.n)}</text></g>`);
+ FE.forEach(f=>h+=`<g class="nd" data-t="f" data-i="${f.i}"><rect x="0" y="-11" rx="6" width="${fw(f)}" height="22" fill="#141b38" stroke="${f.col}"/><text x="10" y="1" fill="#e3e8fb" font-size="13">${esc(f.n)}</text></g>`);
+ svg.innerHTML=h;
+ paths=[...svg.querySelectorAll('path')];sg=[...svg.querySelectorAll('[data-t=s]')];fg=[...svg.querySelectorAll('[data-t=f]')];
+ mark();
 }
-/* 樹枝緩慢擺動 */
-let drawn=[],shown=[],paths=[],groups=[];
-const off=(n,tm)=>n.d===0?[0,0]:[Math.sin(tm*.35+n.id*1.7)*(1.5+n.d),Math.cos(tm*.28+n.id*2.3)*(1.5+n.d)];
+function mark(){
+ const f=sel||hov;
+ const on=l=>!f||l.s===f||l.f===f;
+ paths.forEach((p,i)=>{const o=on(LK[i]);p.style.opacity=f?(o?.95:.06):.35;p.style.strokeWidth=f&&o?2.4:1.3});
+ const rel=new Set();if(f)LK.forEach(l=>{if(l.s===f)rel.add(l.f);if(l.f===f)rel.add(l.s)});
+ sg.forEach((g,i)=>g.classList.toggle('dim',!!f&&SY[i]!==f&&!rel.has(SY[i])));
+ fg.forEach((g,i)=>g.classList.toggle('dim',!!f&&FE[i]!==f&&!rel.has(FE[i])));
+}
+/* 樹枝像被風吹一樣緩慢擺動，相鄰名稱一起上下，不會疊在一起 */
 function anim(){
  const tm=performance.now()/1000;
- shown.forEach((n,i)=>{const[dx,dy]=off(n,tm);n.ax=n.x+dx;n.ay=n.y+dy;const g=groups[i];if(g)g.setAttribute('transform',`translate(${n.ax},${n.ay})`)});
- drawn.forEach(([a,b],i)=>{const p=paths[i];if(!p||a.ax==null||b.ax==null)return;const x1=a.ax+w(a),y1=a.ay,x2=b.ax,y2=b.ay,mx=(x1+x2)/2;p.setAttribute('d',`M${x1},${y1}C${mx},${y1} ${mx},${y2} ${x2},${y2}`)});
+ SY.forEach((s,i)=>{s.ax=SX+Math.sin(tm*.55+i*1.3)*10;s.ay=s.y+Math.sin(tm*.5+s.y*.006)*10;sg[i]&&sg[i].setAttribute('transform',`translate(${s.ax},${s.ay})`)});
+ FE.forEach((f,i)=>{f.ax=FX+Math.sin(tm*.6+i*.45)*16;f.ay=f.y+Math.sin(tm*.5+f.y*.006)*7;fg[i]&&fg[i].setAttribute('transform',`translate(${f.ax},${f.ay})`)});
+ LK.forEach((l,i)=>{const x1=l.s.ax+SW,y1=l.s.ay,x2=l.f.ax,y2=l.f.ay,m=(x1+x2)/2;paths[i]&&paths[i].setAttribute('d',`M${x1},${y1}C${m},${y1} ${m},${y2} ${x2},${y2}`)});
  requestAnimationFrame(anim);
 }
-function visible(n){let p=n.parent;while(p){if(!p.open)return false;p=p.parent}return true}
-function has(n,name){return (n.kids||[]).some(k=>k.n===name||has(k,name))}
-function isIn(n,s){let p=n.parent;while(p){if(p===s)return true;p=p.parent}return false}
 function side(n){
- const sd=$('side');sel=n;if(!n){sd.className='';draw();return}
+ const sd=$('side');sel=n;mark();if(!n){sd.className='';return}
  const tags=a=>`<div class="tags">${a.map(x=>`<b>${esc(x)}</b>`).join('')}</div>`;
- if(n.feat){
-  const ss=root.kids.filter(s=>has(s,n.n)).map(s=>s.n);
+ if(n.t==='f'){
+  const ss=LK.filter(l=>l.f===n).map(l=>l.s.n);
   sd.innerHTML=`<button class="x">✕</button><h2>${esc(n.n)}</h2><div class="k">有這項功能的系統（${ss.length}）</div>${tags(ss)}`;
- }else if(n.d===1){
-  const fs=[];all(n,k=>{if(k.feat)fs.push(k.n)});
-  const shared=root.kids.filter(s=>s!==n).map(s=>{let c=0;fs.forEach(f=>{if(has(s,f))c++});return [s.n,c]}).filter(x=>x[1]).sort((a,b)=>b[1]-a[1]);
-  sd.innerHTML=`<button class="x">✕</button><h2>${esc(n.n)}</h2><div class="k">功能（${fs.length}）</div>${tags(fs)}<div class="k">共用功能的系統</div>${tags(shared.map(x=>`${x[0]}　${x[1]} 項`))}<p><a href="${esc(n.u)}" target="_blank" rel="noopener" style="color:var(--gold)">開啟系統</a></p>`;
- }else{sd.className='';sel=null;draw();return}
- sd.className='on';sd.querySelector('.x').onclick=()=>side(null);draw();
+ }else{
+  const fs=LK.filter(l=>l.s===n).map(l=>l.f);
+  const shared=SY.filter(s=>s!==n).map(s=>[s.n,fs.filter(f=>LK.some(l=>l.s===s&&l.f===f)).length]).filter(x=>x[1]).sort((a,b)=>b[1]-a[1]);
+  sd.innerHTML=`<button class="x">✕</button><h2>${esc(n.n)}</h2><div class="k">功能（${fs.length}）</div>${tags(fs.map(f=>f.n))}<div class="k">共用功能的系統</div>${tags(shared.map(x=>`${x[0]}　${x[1]} 項`))}<p><a href="${esc(n.u)}" target="_blank" rel="noopener" style="color:var(--gold)">開啟系統</a></p>`;
+ }
+ sd.className='on';sd.querySelector('.x').onclick=()=>side(null);
 }
-$('tree').addEventListener('click',e=>{
- const g=e.target.closest('.nd');if(!g)return;const n=byId[g.dataset.id];
- if(n.feat){side(sel===n?null:n);return}
- if(n.d===1&&sel!==n){side(n);return}
- if(n.d>=1&&n.kids){n.open=!n.open;draw()}
-});
-let byId={};
-function index(){let i=0;all(root,n=>{n.id=i;byId[i++]=n;(n.kids||[]).forEach(k=>k.parent=n)})}
-$('bOpen').onclick=()=>{all(root,n=>n.open=true);draw()};
-$('bClose').onclick=()=>{all(root,n=>{if(n.d>=1)n.open=false});draw()};
+const pick=e=>{const g=e.target.closest('.nd');return g?(g.dataset.t==='s'?SY:FE)[+g.dataset.i]:null};
+$('tree').addEventListener('click',e=>{const n=pick(e);side(n&&n!==sel?n:null)});
+$('tree').addEventListener('mouseover',e=>{hov=pick(e);mark()});
+$('tree').addEventListener('mouseleave',()=>{hov=null;mark()});
 const zr=$('zr');
-function setZoom(v){v=Math.max(40,Math.min(200,v));zr.value=v;zoom=v/100;$('zv').textContent=v+'%';if(root)draw()}
+function setZoom(v){v=Math.max(40,Math.min(200,v));zr.value=v;zoom=v/100;$('zv').textContent=v+'%';if(SY.length)draw()}
 zr.addEventListener('input',()=>setZoom(+zr.value));
 $('zIn').onclick=()=>setZoom(+zr.value+10);$('zOut').onclick=()=>setZoom(+zr.value-10);
-load().then(s=>{build(s);index();requestAnimationFrame(anim);$('msg').remove();$('tree').style.display='';
- const fit=Math.floor(($('wrap').clientWidth-32)/(COLX[3]+190)*100);setZoom(Math.min(100,Math.max(40,fit)));
+load().then(s=>{build(s);requestAnimationFrame(anim);$('msg').remove();$('tree').style.display='';
+ const fit=Math.floor(($('wrap').clientWidth-32)/(FX+260)*100);setZoom(Math.min(100,Math.max(40,fit)));
 }).catch(e=>{$('msg').textContent='讀取失敗，請稍後重新整理'});
 }
 </script>
