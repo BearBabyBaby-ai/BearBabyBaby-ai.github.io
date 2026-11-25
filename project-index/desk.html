@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="robots" content="noindex, nofollow">
+<title>熊寶工作中</title>
+<script>
+/* 熊寶工作中：直接用熊寶桌寵獨立版的對話框與查詢方式（畫面、程式都從熊寶桌寵讀，桌寵更新這裡也跟著更新）
+   查詢一樣交給熊寶系統網頁版處理，只查詢、不寫入 */
+(function () {
+  var PET = '/bearbao/pet-app/pet/src/';
+  var SYS = '/bearbao/';
+
+  /* 背景開熊寶系統網頁版，等它的查詢功能準備好 */
+  var sys = null, ready = null;
+  function system() {
+    if (ready) return ready;
+    ready = new Promise(function (ok) {
+      sys = document.createElement('iframe');
+      sys.src = SYS;
+      sys.setAttribute('aria-hidden', 'true');
+      sys.tabIndex = -1;
+      sys.style.cssText = 'position:fixed;left:-10000px;top:0;width:1200px;height:800px;border:0;visibility:hidden';
+      document.body.appendChild(sys);
+      var n = 0;
+      (function wait() {
+        var w = sys.contentWindow;
+        if (w && w.BearCmd && typeof w.BearCmd.run === 'function') return ok(w);
+        if (++n > 160) return ok(null);
+        setTimeout(wait, 250);
+      })();
+    });
+    ready.then(function (w) { if (!w) ready = null; });
+    return ready;
+  }
+
+  function blobOf(data) { return new Blob([data instanceof Uint8Array ? data : String(data)]); }
+
+  window.desk = {
+    ask: function (text) {
+      return system().then(function (w) {
+        if (!w) return '連不上熊寶系統，請確認網路後再試一次';
+        return w.BearCmd.run(String(text || ''), { query: true });
+      });
+    },
+    /* 下載：存到瀏覽器的「下載」資料夾 */
+    save: function (name, data) {
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blobOf(data));
+      a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+      return Promise.resolve(name);
+    },
+    copy: function (text) { try { navigator.clipboard.writeText(String(text)); } catch (e) {} },
+    copyImage: function (png) {
+      return navigator.clipboard.write([new ClipboardItem({ 'image/png': new Blob([png], { type: 'image/png' }) })]).then(function () { return true; });
+    },
+    mini: function (on) { try { parent.deskMini(on); } catch (e) {} },
+    max: function (on) { try { parent.deskMax(on); } catch (e) {} },
+    onFocus: function (fn) { window.deskFocus = fn; }
+  };
+
+  /* 讀熊寶桌寵的對話框畫面，換成這裡的網址後顯示，再載入它的程式 */
+  fetch(PET + 'desk.html?' + Date.now(), { cache: 'no-store' })
+    .then(function (r) { return r.text(); })
+    .then(function (html) {
+      html = html
+        .replace(/<meta[^>]+Content-Security-Policy[^>]*>/i, '')
+        .replace(/<script[^>]*desk\.js[^>]*><\/script>/i, '')
+        .replace(/src="bear-icon\.png"/, 'src="' + PET + 'bear-icon.png"');
+      var keep = window.desk;
+      document.open(); document.write(html); document.close();
+      window.desk = keep;
+      var s = document.createElement('script');
+      s.src = PET + 'desk.js?' + Date.now();
+      document.body.appendChild(s);
+      system();
+    });
+})();
+</script>
+</head>
+<body></body>
+</html>
