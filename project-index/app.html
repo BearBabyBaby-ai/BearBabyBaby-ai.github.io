@@ -58,7 +58,7 @@ body[data-tod="night"] aside{border-left-color:#3a4472}
 #deskBox{flex:1;min-height:0;display:none}
 aside.chat #deskBox{display:block}
 #desk{width:100%;height:100%;border:0;background:transparent;display:block}
-#pet{position:absolute;right:10px;bottom:4px;width:clamp(110px,14vw,170px);height:auto;cursor:pointer;z-index:2}
+#pet{position:absolute;right:10px;bottom:4px;width:clamp(110px,14vw,170px);height:auto;cursor:grab;z-index:2;touch-action:none;-webkit-user-drag:none}
 @media(max-width:700px){main{flex-direction:column}#list{width:auto;flex-direction:row;flex-wrap:wrap;border-right:0;border-bottom:1.5px solid var(--line);max-height:30vh}#list button{width:auto}aside{width:auto;border-left:0;border-top:1.5px solid var(--line);max-height:40vh}}
 </style>
 </head>
@@ -244,26 +244,52 @@ addEventListener('resize',size);
 
 /* 點熊寶：右側窗格改成熊寶查詢（和熊寶桌寵獨立版一樣的查詢方式）；點選單就換回系統資訊，兩者不同時出現 */
 window.deskMini=()=>{};window.deskMax=()=>{};
-$('pet').onclick=()=>{const a=$('side'),f=$('desk');
+function openChat(){const a=$('side'),f=$('desk');
  if(!f.src)f.src='desk.html?'+Date.now();
  a.classList.toggle('chat');if(a.classList.contains('chat'))side(null);vis();
  if(a.classList.contains('chat')){try{const w=f.contentWindow;w.deskFocus&&w.deskFocus(false)}catch(e){}}
-};
+}
 
-/* 右下角熊寶：和熊寶桌寵同一套服裝判斷（節日優先，否則依季節），用桌寵自己的動作清單挑待機眨眼圖 */
+/* 熊寶：和熊寶系統裡的熊寶桌寵一樣——同一套動作圖與服裝判斷（節日優先，否則依季節），
+   在圖的下緣走來走去、隨機耍呆（揮手、拍手、打哈欠、看書、滑手機…），晚上偶爾睡覺；
+   可以抓起來（掙扎），放開會掉下來再拍拍灰塵；點一下開熊寶查詢 */
 (function(){
  const PA='https://raw.githubusercontent.com/BearBabyBaby-ai/bearbao/pet-assets/';
- const tz=new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Taipei'}));
- const m=tz.getMonth()+1,d=tz.getDate();
- let o=null;
- if(m===12&&(d===24||d===25))o='christmas';
- else{try{let lm=0,ld=0,leap=false;for(const p of new Intl.DateTimeFormat('en-u-ca-chinese',{month:'numeric',day:'numeric'}).formatToParts(tz)){if(p.type==='month'){lm=parseInt(p.value,10);leap=/bis/.test(p.value)}if(p.type==='day')ld=parseInt(p.value,10)}
-  if(!leap){if(lm===1&&ld>=1&&ld<=5)o='lunar_new_year';else if(lm===1&&ld===15)o='lantern';else if(lm===5&&ld===5)o='dragon_boat';else if(lm===8&&ld===15)o='mid_autumn'}}catch(e){}}
- if(!o)o=m>=3&&m<=5?'spring':m>=6&&m<=8?'summer':m>=9&&m<=11?'autumn':'winter';
- fetch(PA+'manifest.json?'+Date.now(),{cache:'no-store'}).then(r=>r.json()).then(mf=>{
-  const id=(mf.outfits[o]&&mf.outfits[o].variants&&mf.outfits[o].variants.idle_blink)||'idle_blink';
-  const a=mf.animations.find(x=>x.id===id);if(a)$('pet').src=PA+a.file;
- }).catch(()=>{});
+ const pet=$('pet'),wrap=$('wrap');
+ const tz=()=>new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Taipei'}));
+ function outfitNow(){const t=tz(),m=t.getMonth()+1,d=t.getDate();
+  if(m===12&&(d===24||d===25))return 'christmas';
+  try{let lm=0,ld=0,leap=false;for(const p of new Intl.DateTimeFormat('en-u-ca-chinese',{month:'numeric',day:'numeric'}).formatToParts(t)){if(p.type==='month'){lm=parseInt(p.value,10);leap=/bis/.test(p.value)}if(p.type==='day')ld=parseInt(p.value,10)}
+   if(!leap){if(lm===1&&ld>=1&&ld<=5)return 'lunar_new_year';if(lm===1&&ld===15)return 'lantern';if(lm===5&&ld===5)return 'dragon_boat';if(lm===8&&ld===15)return 'mid_autumn'}}catch(e){}
+  return m>=3&&m<=5?'spring':m>=6&&m<=8?'summer':m>=9&&m<=11?'autumn':'winter'}
+ let MF=null,O='default',byId={},blobs={},x=null,dir=1,cur='',timer=null,walking=0,last=0,held=false;
+ const FUN=['wave','clap','giggle','jump','curious_tilt','scratch_head','look_back','sniff','ears_perk','facepalm','point_down','beckon','blow_kiss','yawn','stretch_up','duck','eat_snack','eat_bento','dust_off','roll_left'];
+ const LONG=['read_book','use_phone','play_toy','tail_wag','sit_down'];
+ const clipOf=act=>{const v=MF.outfits[O]&&MF.outfits[O].variants&&MF.outfits[O].variants[act];return byId[v||act]||null};
+ async function src(c){if(!blobs[c.file]){try{blobs[c.file]=await (await fetch(PA+c.file)).blob()}catch(e){return PA+c.file}}return URL.createObjectURL(blobs[c.file])}
+ async function play(act,ms){const c=clipOf(act);if(!c)return false;cur=act;const u=await src(c);if(cur!==act)return true;const old=pet.src;pet.src=u;if(old.startsWith('blob:'))setTimeout(()=>URL.revokeObjectURL(old),500);clearTimeout(timer);timer=setTimeout(next,ms||(c.playback==='once'?c.duration_ms:c.duration_ms*3));return true}
+ const W=()=>wrap.clientWidth,PW=()=>pet.offsetWidth||140;
+ function place(){if(x==null)x=W()-PW()-10;x=Math.max(0,Math.min(W()-PW(),x));pet.style.left=x+'px';pet.style.right='auto'}
+ function step(t){const dt=last?(t-last)/1000:0;last=t;
+  if(walking&&!held){x+=dir*walking*dt*SPD;if(x<=0||x>=W()-PW()){dir=-dir;play(dir>0?'walk_right':'walk_left',3000+Math.random()*4000)}place()}
+  requestAnimationFrame(step)}
+ function next(){if(held)return;walking=0;const r=Math.random(),h=tz().getHours(),night=h>=23||h<6;
+  if(night&&r<.25){play('pillow_sleep',8000+Math.random()*8000);return}
+  if(r<.35){dir=Math.random()<.5?-1:1;walking=55;play(dir>0?'walk_right':'walk_left',2500+Math.random()*4000);return}
+  if(r<.45){dir=1;walking=130;play('run_right',1500+Math.random()*1500);return}
+  if(r<.6){play(LONG[Math.floor(Math.random()*LONG.length)],3000+Math.random()*4000);return}
+  if(r<.85){const a=FUN[Math.floor(Math.random()*FUN.length)];if(clipOf(a)){play(a);return}}
+  play('idle_blink',2000+Math.random()*3000)}
+ /* 抓起來、放開掉下來、點一下開查詢 */
+ let px=0,py=0,mv=0;
+ pet.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();pet.setPointerCapture(e.pointerId);px=e.clientX;py=e.clientY;mv=0});
+ pet.addEventListener('pointermove',e=>{if(!pet.hasPointerCapture(e.pointerId))return;const dx=e.clientX-px,dy=e.clientY-py;mv+=Math.abs(dx)+Math.abs(dy);px=e.clientX;py=e.clientY;
+  if(mv>8){if(!held){held=true;walking=0;clearTimeout(timer);play('grab_struggle',60000)}x+=dx;place();const b=parseFloat(pet.style.bottom)||4;pet.style.bottom=Math.max(4,b-dy)+'px'}});
+ pet.addEventListener('pointerup',e=>{if(!held){openChat();return}held=false;clearTimeout(timer);play('falling',1e6);
+  const fall=()=>{const b=parseFloat(pet.style.bottom)||4;if(b>4){pet.style.bottom=Math.max(4,b-14)+'px';requestAnimationFrame(fall)}else{play('dust_off')}};fall()});
+ fetch(PA+'manifest.json?'+Date.now(),{cache:'no-store'}).then(r=>r.json()).then(mf=>{MF=mf;O=outfitNow();mf.animations.forEach(a=>byId[a.id]=a);place();play('wave');requestAnimationFrame(step);
+  setInterval(()=>{O=outfitNow()},600000)}).catch(()=>{});
+ addEventListener('resize',place);
 })();
 load().then(s=>{build(s);const TOP=['熊熊綜合系統','熊寶系統'],rk=x=>{const k=TOP.indexOf(x.n);return k<0?9:k};$('list').innerHTML=[...SY].sort((a,b)=>rk(a)-rk(b)).map(x=>`<button data-i="${x.i}" style="--sc:${x.col}">${esc(x.n)}</button>`).join('');$('list').onclick=e=>{const b=e.target.closest('button');if(!b)return;const n=SY[+b.dataset.i];side(sel===n?null:n)};size();place();for(let i=0;i<400;i++)step(false);fit();$('msg').remove();ready=true;loop();
 }).catch(e=>{$('msg').textContent='讀取失敗，請稍後重新整理'});
