@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>專案索引</title>
+<style>
+:root{--bg:#0b1024;--panel:#141b38;--ink:#e8ecf8;--dim:#8f98bb;--line:#2a3463;--gold:#ffc861}
+*{box-sizing:border-box;min-width:0}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 "Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;display:flex;flex-direction:column}
+header{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;padding:12px max(2vw,12px);border-bottom:1px solid var(--line)}
+h1{margin:0;font-size:clamp(17px,2.2vw,22px);font-weight:900}
+h1 span{color:var(--dim);font-weight:400;font-size:.72em;margin-inline-start:8px}
+.ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+button{font:inherit;font-size:14px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:7px 15px;min-height:38px;cursor:pointer}
+button:hover{border-color:#5566c4}
+.zoom{display:flex;align-items:center;gap:8px}
+.zoom button{min-height:32px;padding:2px 11px}
+input[type=range]{width:min(180px,34vw);accent-color:#e8634a}
+.zoom output{font-size:13px;color:var(--dim);width:3.2em;text-align:end}
+main{flex:1;display:flex;min-height:0}
+#wrap{flex:1;overflow:auto;padding:16px}
+#msg{color:var(--dim);padding:40px 20px;font-size:16px}
+svg text{font-family:inherit;dominant-baseline:middle}
+.lk{fill:none;stroke:#3a4680;stroke-width:1.4}
+.lk.hl{stroke:var(--gold);stroke-width:2.2}
+.nd{cursor:pointer}
+.nd rect{stroke-width:1}
+.nd.dim{opacity:.28}
+.nd.hl rect{stroke:var(--gold);stroke-width:2}
+.open{fill:var(--gold);font-size:12px;cursor:pointer}
+aside{width:min(300px,42vw);border-left:1px solid var(--line);padding:16px;overflow:auto;display:none}
+aside.on{display:block}
+aside h2{margin:0 0 6px;font-size:19px}
+aside .k{font-size:13px;color:var(--dim);margin:12px 0 6px}
+aside .tags{display:flex;flex-wrap:wrap;gap:6px}
+aside .tags b{font-weight:400;font-size:13px;padding:3px 10px;border-radius:999px;background:#1d2550;border:1px solid var(--line)}
+aside .x{float:right;min-height:30px;padding:0 10px}
+@media(max-width:700px){main{flex-direction:column}aside{width:auto;border-left:0;border-top:1px solid var(--line);max-height:40vh}}
+</style>
+</head>
+<body>
+<header>
+  <h1 id="ttl">專案索引</h1>
+  <div class="ctl">
+    <button id="bOpen">全部展開</button>
+    <button id="bClose">全部收合</button>
+    <div class="zoom">
+      <button id="zOut" aria-label="縮小">－</button>
+      <input id="zr" type="range" min="40" max="200" value="100" aria-label="縮放">
+      <button id="zIn" aria-label="放大">＋</button>
+      <output id="zv">100%</output>
+    </div>
+  </div>
+</header>
+<main>
+  <div id="wrap"><div id="msg">讀取中…</div><svg id="tree" style="display:none"></svg></div>
+  <aside id="side"></aside>
+</main>
+<script>
+{
+const OWNER='BearBabyBaby-ai';
+/* 不列入的程式庫 */
+const SKIP=['bear-game','adsb-list','bearbabybaby-ai.github.io','repository-name'];
+/* 已知系統的中文名稱；新程式庫會自動用它網頁的標題 */
+const NAME={'bearbear':'熊熊綜合系統','bearbao':'熊寶系統','bearbao-mini':'熊寶小資訊','lantern-festival':'2027澎湖元宵','penghu-bear-journey':'熊熊澎湖之旅','penghu-food':'澎湖資訊推薦'};
+/* 功能分類與判斷用的關鍵字（程式碼裡出現兩次以上才算有這項功能） */
+const CATS=[
+ ['在地資料','#6fa8ff',[['美食',['美食']],['景點',['景點']],['廟宇',['廟宇']],['其他店家',['其他店家']],['行程業者',['行程業者']],['港口與遊客中心',['遊客中心']]]],
+ ['潮汐天氣','#4fd6d0',[['奎壁山分海',['奎壁山']],['30天潮汐預報',['30天潮汐','潮汐預報']],['風浪天氣',['風浪']],['池西岩瀑',['池西岩瀑']]]],
+ ['交通航班','#f2d65a',[['航班動態',['航班']],['查機位',['查機位']],['候補資訊',['候補']],['船舶動態',['船舶']]]],
+ ['地圖導航','#ff9a4d',[['互動地圖',['地圖']],['立體地圖',['3D']],['導航',['導航']],['路線',['路線']],['測速與科技執法',['測速']]]],
+ ['活動廟宇','#ff6f7d',[['月曆活動',['月曆']],['元宵資訊',['元宵']],['花火節',['花火']],['集章',['集章']],['主祀判斷',['主祀']]]],
+ ['個人管理','#b68cff',[['重要資訊提醒',['重要資訊提醒']],['財務管理',['財務']],['機票搶票提醒',['搶票']],['特殊日期生日',['特殊日期']],['工作模式查詢',['工作模式']],['後台編修',['後台']]]]
+];
+const BAD=/(^|\/)(lib|libs|node_modules|tests?|assets|icons|scripts|tools|sources|docs|google-sites|build|apk|\.github|native\/www|www\/lib|leaflet|markercluster)\//i;
+const CODE=/\.(html|js|cjs|mjs)$/i;
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $=id=>document.getElementById(id);
+
+async function j(u){const r=await fetch(u);if(!r.ok)throw new Error(r.status);return r.json()}
+async function t(u){try{const r=await fetch(u);return r.ok?await r.text():''}catch(e){return ''}}
+const raw=(repo,br,p)=>`https://raw.githubusercontent.com/${OWNER}/${repo}/${br}/${p.split('/').map(encodeURIComponent).join('/')}`;
+const count=(txt,kws)=>kws.reduce((s,k)=>s+txt.split(k).length-1,0);
+
+async function load(){
+ const repos=(await j(`https://api.github.com/users/${OWNER}/repos?per_page=100`)).filter(r=>!r.fork&&r.size>0&&!SKIP.includes(r.name.toLowerCase()));
+ const systems=[];
+ await Promise.all(repos.map(async r=>{
+  const br=r.default_branch;
+  const tree=(await j(`https://api.github.com/repos/${OWNER}/${r.name}/git/trees/${br}?recursive=1`)).tree.filter(x=>x.type==='blob');
+  /* 程式庫裡獨立成另一支程式的資料夾（例如桌寵程式） */
+  const subs=[...new Set(tree.filter(x=>/^[^\/]+-app\/package\.json$/.test(x.path)).map(x=>x.path.split('/')[0]))];
+  const files=tree.filter(x=>CODE.test(x.path)&&!BAD.test(x.path)&&!/\.min\.js$|(^|\/)sw\.js$/.test(x.path)&&x.size<3e6);
+  const read=async list=>(await Promise.all(list.map(x=>t(raw(r.name,br,x.path))))).join('\n');
+  const mainFiles=files.filter(x=>!subs.some(s=>x.path.startsWith(s+'/')));
+  let name=NAME[r.name.toLowerCase()];
+  if(!name){const idx=tree.find(x=>/(^|\/)index\.html$/.test(x.path));const h=idx?await t(raw(r.name,br,idx.path)):'';name=(h.match(/<title>([^<]+)/)||[])[1]||r.name}
+  systems.push({n:name.trim(),u:r.homepage||`https://${OWNER.toLowerCase()}.github.io/${r.name}/`,txt:await read(mainFiles),at:r.pushed_at});
+  for(const s of subs){
+   const pk=await t(raw(r.name,br,s+'/package.json'));let nm=s;try{nm=JSON.parse(pk).productName||s}catch(e){}
+   systems.push({n:nm,u:`https://github.com/${OWNER}/${r.name}/releases`,txt:await read(files.filter(x=>x.path.startsWith(s+'/'))),at:r.pushed_at});
+  }
+ }));
+ systems.sort((a,b)=>a.n.localeCompare(b.n,'zh-Hant'));
+ return systems;
+}
+
+let root=null,zoom=1,sel=null;
+function build(systems){
+ root={n:'專案索引',kids:[],open:true,d:0};
+ let feats=new Set(),links=0;
+ systems.forEach(s=>{
+  const sn={n:s.n,u:s.u,kids:[],open:true,d:1,sys:1};
+  CATS.forEach(([cn,col,fs])=>{
+   const has=fs.filter(([fn,kw])=>count(s.txt,kw)>=2);
+   if(!has.length)return;
+   const cnode={n:cn,col,kids:[],open:true,d:2};
+   has.forEach(([fn])=>{cnode.kids.push({n:fn,col,d:3,feat:1,sys:sn});feats.add(fn);links++});
+   sn.kids.push(cnode);
+  });
+  root.kids.push(sn);
+ });
+ $('ttl').innerHTML=`專案索引<span>${systems.length} 個系統・${feats.size} 項功能・${links} 條關聯</span>`;
+}
+function all(n,f){f(n);(n.kids||[]).forEach(k=>all(k,f))}
+const COLX=[0,150,330,470],ROW=26;
+function layout(){
+ let i=0;
+ (function walk(n){n.x=COLX[n.d];if(n.kids&&n.kids.length&&n.open){n.kids.forEach(walk);n.y=(n.kids[0].y+n.kids[n.kids.length-1].y)/2}else{n.y=i++*ROW}})(root);
+ return i;
+}
+function w(n){return n.n.length*(n.d===1?15.5:13.5)+(n.d===1?22:18)}
+function draw(){
+ const rows=layout(),W=COLX[3]+190,H=rows*ROW+20,svg=$('tree');
+ svg.setAttribute('viewBox',`-10 -14 ${W} ${H}`);svg.setAttribute('width',W*zoom);svg.setAttribute('height',H*zoom);
+ const hlName=sel&&sel.feat?sel.n:null,hlSys=sel&&sel.sys&&!sel.feat?sel:null;
+ let L='',N='';
+ (function walk(n){
+  if(!(n.kids&&n.open))return;
+  n.kids.forEach(k=>{
+   const x1=n.x+w(n),y1=n.y,x2=k.x,y2=k.y,mx=(x1+x2)/2;
+   const on=(hlName&&k.feat&&k.n===hlName)||(hlName&&!k.feat&&has(k,hlName))||(hlSys&&(k===hlSys||n===hlSys||isIn(k,hlSys)));
+   L+=`<path class="lk${on?' hl':''}" d="M${x1},${y1}C${mx},${y1} ${mx},${y2} ${x2},${y2}"/>`;
+   walk(k);
+  });
+ })(root);
+ all(root,n=>{
+  if(n.d>0&&!visible(n))return;
+  const col=n.d===0?'#ffc861':n.d===1?'#ffc861':n.col;
+  const fill=n.d<=1?'#3a2a08':'#141b38';
+  const hl=(hlName&&n.feat&&n.n===hlName)||(hlSys&&(n===hlSys));
+  const dim=hlName&&n.feat&&n.n!==hlName;
+  const fold=n.kids&&n.kids.length&&!n.open?' ＋':'';
+  N+=`<g class="nd${hl?' hl':''}${dim?' dim':''}" data-id="${n.id}" transform="translate(${n.x},${n.y})"><rect x="0" y="-11" rx="6" width="${w(n)+(fold?14:0)}" height="22" fill="${fill}" stroke="${col}"/><text x="${n.d===1?11:9}" y="1" fill="${n.d<=1?'#ffe2a3':'#e3e8fb'}" font-size="${n.d<=1?15:13}" font-weight="${n.d<=1?700:400}">${esc(n.n)}${fold}</text></g>`;
+ });
+ svg.innerHTML=L+N;
+}
+function visible(n){let p=n.parent;while(p){if(!p.open)return false;p=p.parent}return true}
+function has(n,name){return (n.kids||[]).some(k=>k.n===name||has(k,name))}
+function isIn(n,s){let p=n.parent;while(p){if(p===s)return true;p=p.parent}return false}
+function side(n){
+ const sd=$('side');sel=n;if(!n){sd.className='';draw();return}
+ const tags=a=>`<div class="tags">${a.map(x=>`<b>${esc(x)}</b>`).join('')}</div>`;
+ if(n.feat){
+  const ss=root.kids.filter(s=>has(s,n.n)).map(s=>s.n);
+  sd.innerHTML=`<button class="x">✕</button><h2>${esc(n.n)}</h2><div class="k">有這項功能的系統（${ss.length}）</div>${tags(ss)}`;
+ }else if(n.d===1){
+  const fs=[];all(n,k=>{if(k.feat)fs.push(k.n)});
+  const shared=root.kids.filter(s=>s!==n).map(s=>{let c=0;fs.forEach(f=>{if(has(s,f))c++});return [s.n,c]}).filter(x=>x[1]).sort((a,b)=>b[1]-a[1]);
+  sd.innerHTML=`<button class="x">✕</button><h2>${esc(n.n)}</h2><div class="k">功能（${fs.length}）</div>${tags(fs)}<div class="k">共用功能的系統</div>${tags(shared.map(x=>`${x[0]}　${x[1]} 項`))}<p><a href="${esc(n.u)}" target="_blank" rel="noopener" style="color:var(--gold)">開啟系統</a></p>`;
+ }else{sd.className='';sel=null;draw();return}
+ sd.className='on';sd.querySelector('.x').onclick=()=>side(null);draw();
+}
+$('tree').addEventListener('click',e=>{
+ const g=e.target.closest('.nd');if(!g)return;const n=byId[g.dataset.id];
+ if(n.feat){side(sel===n?null:n);return}
+ if(n.d===1&&sel!==n){side(n);return}
+ if(n.d>=1&&n.kids){n.open=!n.open;draw()}
+});
+let byId={};
+function index(){let i=0;all(root,n=>{n.id=i;byId[i++]=n;(n.kids||[]).forEach(k=>k.parent=n)})}
+$('bOpen').onclick=()=>{all(root,n=>n.open=true);draw()};
+$('bClose').onclick=()=>{all(root,n=>{if(n.d>=1)n.open=false});draw()};
+const zr=$('zr');
+function setZoom(v){v=Math.max(40,Math.min(200,v));zr.value=v;zoom=v/100;$('zv').textContent=v+'%';if(root)draw()}
+zr.addEventListener('input',()=>setZoom(+zr.value));
+$('zIn').onclick=()=>setZoom(+zr.value+10);$('zOut').onclick=()=>setZoom(+zr.value-10);
+load().then(s=>{build(s);index();$('msg').remove();$('tree').style.display='';
+ const fit=Math.floor(($('wrap').clientWidth-32)/(COLX[3]+190)*100);setZoom(Math.min(100,Math.max(40,fit)));
+}).catch(e=>{$('msg').textContent='讀取失敗，請稍後重新整理'});
+}
+</script>
+</body>
+</html>
