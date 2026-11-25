@@ -184,12 +184,13 @@ function draw(){
  const f=sel||hov,qm=!f&&Q;
  LK.forEach(l=>{const on=qm?Q.includes(l.f):(!f||l.s===f||l.f===f);const[x1,y1]=dotS(l.s),[x2,y2]=dotS(l.f),mx=(x1+x2)/2,my=(y1+y2)/2;
   /* 線條：平常是細的淡色直線；點選時才用該功能的顏色加粗 */
-  const hl=(f||qm)&&on;ctx.strokeStyle=hl?l.f.col:(NIGHT()?'#e2cba6':'#876c4b');ctx.globalAlpha=(f||qm)?(on?.95:.06):.55;ctx.lineWidth=hl?2.2:1;
+  const hl=(f||qm)&&on;ctx.strokeStyle=hl?(NIGHT()?'#f6e7cf':'#0a6fb3'):(NIGHT()?'#e2cba6':'#876c4b');ctx.globalAlpha=(f||qm)?(on?.9:.12):.45;ctx.lineWidth=hl?2:1;
   ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke()});
  const tm=TM;
- nodes.forEach(n=>{const[cx,cy]=toS(n),sys=n.t==='s',r=RAD(n)*zoom,[x,y]=dotS(n),on=rel(n);ctx.globalAlpha=on?1:.18;
-  const gr=r*(sys?4.2:3.6),g=ctx.createRadialGradient(x,y,0,x,y,gr);g.addColorStop(0,n.col);g.addColorStop(.25,n.col+'99');g.addColorStop(1,n.col+'00');
-  ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,gr,0,7);ctx.fill();
+ nodes.forEach(n=>{const[cx,cy]=toS(n),sys=n.t==='s',r=RAD(n)*zoom,[x,y]=dotS(n),on=rel(n);ctx.globalAlpha=on?1:.4;
+  if(NIGHT()){const gr=r*(sys?4.2:3.6),g=ctx.createRadialGradient(x,y,0,x,y,gr);g.addColorStop(0,n.col);g.addColorStop(.25,n.col+'99');g.addColorStop(1,n.col+'00');
+  ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,gr,0,7);ctx.fill()}
+  else{ctx.fillStyle=n.col;ctx.beginPath();ctx.arc(x,y,r*(sys?1.05:1),0,7);ctx.fill()}
   ctx.fillStyle=sys?'#f6e7cf':'#ffffff';ctx.beginPath();ctx.arc(x,y,r*(sys?.62:.55),0,7);ctx.fill();
   if(sys){ctx.strokeStyle=n.col;ctx.lineWidth=1.4;ctx.beginPath();ctx.arc(x,y,r*1.25+Math.sin(tm*1.6+n.ph)*2*zoom,0,7);ctx.stroke()}
   if(f===n||(qm&&Q.includes(n))){ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(x,y,r*(sys?1.7:2.2),0,7);ctx.stroke()}
