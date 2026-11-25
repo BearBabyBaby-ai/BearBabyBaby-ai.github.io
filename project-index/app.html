@@ -227,7 +227,7 @@ addEventListener('resize',size);
 /* 點熊寶：在右側資訊窗格下方開熊寶查詢（和熊寶桌寵獨立版一樣的查詢方式）；再點一次收起來 */
 window.deskMini=()=>{};window.deskMax=()=>{};
 $('pet').onclick=()=>{const a=$('side'),f=$('desk');
- if(!f.src)f.src='desk.html';
+ if(!f.src)f.src='desk.html?'+Date.now();
  a.classList.toggle('chat');vis();
  if(a.classList.contains('chat')){try{const w=f.contentWindow;w.deskFocus&&w.deskFocus(false)}catch(e){}}
 };
