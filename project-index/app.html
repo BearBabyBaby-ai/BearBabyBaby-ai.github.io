@@ -48,8 +48,7 @@ body[data-tod="night"] aside{border-left-color:#3a4472}
 #list{width:min(210px,34vw);border-right:1.5px solid var(--line);padding:14px 10px;overflow:auto;display:flex;flex-direction:column;gap:6px;background:var(--label)}
 #list button{text-align:start;border-radius:10px;width:100%;font-size:15px;font-weight:700;color:#000;background:#fff;border:1.5px solid var(--line)}
 #list button:hover{background:#fdf6ea}
-#list button{background:var(--sb)!important;border-color:var(--sc)!important;border-left-width:6px!important}
-#list button.on{box-shadow:0 0 0 2px var(--sc) inset;font-weight:900}
+#list button.on{background:#f6e7cf;border-color:#876c4b}
 /* 熊寶查詢（和熊寶桌寵一樣） */
 #deskBox{flex:1;min-height:0;display:none}
 aside.chat #deskBox{display:block}
@@ -82,12 +81,12 @@ aside.chat #deskBox{display:block}
 const OWNER='BearBabyBaby-ai';
 /* 功能分類與判斷用的關鍵字（程式碼裡出現兩次以上才算有這項功能） */
 const CATS=[
- ['在地資料','#6fa8ff',[['美食',['美食']],['景點',['景點']],['廟宇',['廟宇']],['其他店家',['其他店家']],['行程業者',['行程業者']],['港口與遊客中心',['遊客中心']]]],
- ['潮汐天氣','#4fd6d0',[['奎壁山分海',['奎壁山']],['30天潮汐預報',['30天潮汐','潮汐預報']],['風浪天氣',['風浪']],['池西岩瀑',['池西岩瀑']]]],
- ['交通航班','#f2d65a',[['航班動態',['航班']],['查機位',['查機位']],['候補資訊',['候補']],['船舶動態',['船舶']]]],
- ['地圖導航','#ff9a4d',[['互動地圖',['地圖']],['立體地圖',['3D']],['導航',['導航']],['路線',['路線']],['測速與科技執法',['測速']]]],
- ['活動廟宇','#ff6f7d',[['月曆活動',['月曆']],['元宵資訊',['元宵']],['花火節',['花火']],['集章',['集章']],['主祀判斷',['主祀']]]],
- ['個人管理','#b68cff',[['重要資訊提醒',['重要資訊提醒']],['財務管理',['財務']],['機票搶票提醒',['搶票']],['特殊日期生日',['特殊日期']],['工作模式查詢',['工作模式']],['後台編修',['後台']]]]
+ ['在地資料','#0a6fb3',[['美食',['美食']],['景點',['景點']],['廟宇',['廟宇']],['其他店家',['其他店家']],['行程業者',['行程業者']],['港口與遊客中心',['遊客中心']]]],
+ ['潮汐天氣','#0d7d8a',[['奎壁山分海',['奎壁山']],['30天潮汐預報',['30天潮汐','潮汐預報']],['風浪天氣',['風浪']],['池西岩瀑',['池西岩瀑']]]],
+ ['交通航班','#9a6700',[['航班動態',['航班']],['查機位',['查機位']],['候補資訊',['候補']],['船舶動態',['船舶']]]],
+ ['地圖導航','#c2410c',[['互動地圖',['地圖']],['立體地圖',['3D']],['導航',['導航']],['路線',['路線']],['測速與科技執法',['測速']]]],
+ ['活動廟宇','#b71c1c',[['月曆活動',['月曆']],['元宵資訊',['元宵']],['花火節',['花火']],['集章',['集章']],['主祀判斷',['主祀']]]],
+ ['個人管理','#6b3fa0',[['重要資訊提醒',['重要資訊提醒']],['財務管理',['財務']],['機票搶票提醒',['搶票']],['特殊日期生日',['特殊日期']],['工作模式查詢',['工作模式']],['後台編修',['後台']]]]
 ];
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const $=id=>document.getElementById(id);
@@ -131,10 +130,9 @@ async function load(){try{return await live()}catch(e){const r=await fetch('data
 let SY=[],FE=[],LK=[],nodes=[],zoom=1,panX=0,panY=0,sel=null,hov=null,ready=false;
 function build(systems){
  /* 每個系統一種顏色（淺底、框線、圖上光點），選單、圖、資訊窗格都用同一色；順序照左側選單 */
- const PAL=[['#e2edfa','#3b78c4'],['#e4f3e1','#3f9a4a'],['#fdeedd','#d9822b'],['#f1e4f5','#9a5bb5'],['#dff3f2','#2a9d95'],['#fff3c4','#c9a227'],['#fde4e4','#d0505a']];
  const TOP=['熊熊綜合系統','熊寶系統'],rk=n=>{const k=TOP.indexOf(n);return k<0?9:k};
  const order=systems.map((s,i)=>i).sort((a,b)=>rk(systems[a].n)-rk(systems[b].n));
- SY=systems.map((s,i)=>{const p=PAL[order.indexOf(i)%PAL.length];return{i,n:s.n,u:s.u,t:'s',col:p[1],bg:p[0]}});FE=[];LK=[];
+ SY=systems.map((s,i)=>({i,n:s.n,u:s.u,t:'s',col:'#876c4b',bg:'#f6e7cf'}));FE=[];LK=[];
  CATS.forEach(([cn,col,fs])=>fs.forEach(([fn,kw])=>{
   const owners=systems.map((s,i)=>s.f.includes(fn)?i:-1).filter(i=>i>=0);
   if(!owners.length)return;
@@ -186,13 +184,13 @@ function draw(){
  const f=sel||hov,qm=!f&&Q;
  LK.forEach(l=>{const on=qm?Q.includes(l.f):(!f||l.s===f||l.f===f);const[x1,y1]=dotS(l.s),[x2,y2]=dotS(l.f),mx=(x1+x2)/2,my=(y1+y2)/2;
   /* 線條：平常是細的淡色直線；點選時才用該功能的顏色加粗 */
-  const hl=(f||qm)&&on;ctx.strokeStyle=hl?l.f.col:(NIGHT()?'#c8cfe8':'#876c4b');ctx.globalAlpha=(f||qm)?(on?.95:.04):(NIGHT()?.18:.16);ctx.lineWidth=hl?2:.8;
+  const hl=(f||qm)&&on;ctx.strokeStyle=hl?l.f.col:(NIGHT()?'#e2cba6':'#876c4b');ctx.globalAlpha=(f||qm)?(on?.95:.06):.55;ctx.lineWidth=hl?2.2:1;
   ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke()});
  const tm=TM;
  nodes.forEach(n=>{const[cx,cy]=toS(n),sys=n.t==='s',r=RAD(n)*zoom,[x,y]=dotS(n),on=rel(n);ctx.globalAlpha=on?1:.18;
   const gr=r*(sys?4.2:3.6),g=ctx.createRadialGradient(x,y,0,x,y,gr);g.addColorStop(0,n.col);g.addColorStop(.25,n.col+'99');g.addColorStop(1,n.col+'00');
   ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,gr,0,7);ctx.fill();
-  ctx.fillStyle=sys?'#fff4d6':'#ffffff';ctx.beginPath();ctx.arc(x,y,r*(sys?.62:.55),0,7);ctx.fill();
+  ctx.fillStyle=sys?'#f6e7cf':'#ffffff';ctx.beginPath();ctx.arc(x,y,r*(sys?.62:.55),0,7);ctx.fill();
   if(sys){ctx.strokeStyle=n.col;ctx.lineWidth=1.4;ctx.beginPath();ctx.arc(x,y,r*1.25+Math.sin(tm*1.6+n.ph)*2*zoom,0,7);ctx.stroke()}
   if(f===n||(qm&&Q.includes(n))){ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(x,y,r*(sys?1.7:2.2),0,7);ctx.stroke()}
   const fs=(sys?18:12)*zoom,ly=y+r*(sys?1.6:1.6)+fs*.75;
@@ -217,7 +215,7 @@ function side(n){
  }else{
   const fs=LK.filter(l=>l.s===n).map(l=>l.f);
   const shared=SY.filter(s=>s!==n).map(s=>[s.n,fs.filter(f=>f.nb.has(s)).length]).filter(x=>x[1]).sort((a,b)=>b[1]-a[1]);
-  sd.innerHTML=`<button class="x">✕</button><h2 style="border-left:6px solid ${n.col};padding-left:8px;background:${n.bg};border-radius:6px">${esc(n.n)}</h2><div class="k">功能（${fs.length}）</div>${tags(fs.map(f=>f.n))}<div class="k">共用功能的系統</div>${tags(shared.map(x=>`${x[0]}　${x[1]} 項`))}<p><a href="${esc(n.u)}" target="_blank" rel="noopener" style="color:var(--gold)">開啟系統</a></p>`;
+  sd.innerHTML=`<button class="x">✕</button><h2>${esc(n.n)}</h2><div class="k">功能（${fs.length}）</div>${tags(fs.map(f=>f.n))}<div class="k">共用功能的系統</div>${tags(shared.map(x=>`${x[0]}　${x[1]} 項`))}<p><a href="${esc(n.u)}" target="_blank" rel="noopener" style="color:var(--gold)">開啟系統</a></p>`;
  }
  sd.querySelector('.x').onclick=()=>side(null);
  vis();
@@ -244,7 +242,7 @@ $('pet').onclick=()=>{const a=$('side'),f=$('desk');
  a.classList.toggle('chat');if(a.classList.contains('chat'))side(null);vis();
  if(a.classList.contains('chat')){try{const w=f.contentWindow;w.deskFocus&&w.deskFocus(false)}catch(e){}}
 };
-load().then(s=>{build(s);const TOP=['熊熊綜合系統','熊寶系統'],rk=x=>{const k=TOP.indexOf(x.n);return k<0?9:k};$('list').innerHTML=[...SY].sort((a,b)=>rk(a)-rk(b)).map(x=>`<button data-i="${x.i}" style="--sb:${x.bg};--sc:${x.col}">${esc(x.n)}</button>`).join('');$('list').onclick=e=>{const b=e.target.closest('button');if(!b)return;const n=SY[+b.dataset.i];side(sel===n?null:n)};size();place();for(let i=0;i<400;i++)step(false);fit();$('msg').remove();ready=true;loop();
+load().then(s=>{build(s);const TOP=['熊熊綜合系統','熊寶系統'],rk=x=>{const k=TOP.indexOf(x.n);return k<0?9:k};$('list').innerHTML=[...SY].sort((a,b)=>rk(a)-rk(b)).map(x=>`<button data-i="${x.i}">${esc(x.n)}</button>`).join('');$('list').onclick=e=>{const b=e.target.closest('button');if(!b)return;const n=SY[+b.dataset.i];side(sel===n?null:n)};size();place();for(let i=0;i<400;i++)step(false);fit();$('msg').remove();ready=true;loop();
 }).catch(e=>{$('msg').textContent='讀取失敗，請稍後重新整理'});
 }
 </script>
