@@ -60,6 +60,9 @@ body[data-tod="night"] aside{border-left-color:#3a4472}
 #deskBox{flex:1;min-height:0;display:none}
 aside.chat #deskBox{display:block}
 #desk{width:100%;height:100%;border:0;background:transparent;display:block}
+/* 點左側選單：中間換成該系統本身 */
+#sysv{position:absolute;inset:0;width:100%;height:100%;border:0;background:#fff;display:none;z-index:1}
+#wrap.sys #sysv{display:block}
 #pet{position:absolute;right:10px;bottom:4px;width:clamp(110px,14vw,170px);height:auto;cursor:pointer;z-index:2;-webkit-user-drag:none}
 @media(max-width:700px){main{flex-direction:column}#list{width:auto;flex-direction:row;flex-wrap:wrap;border-right:0;border-bottom:1.5px solid var(--line);max-height:30vh}#list button{width:auto}aside{width:auto;border-left:0;border-top:1.5px solid var(--line);max-height:40vh}}
 </style>
@@ -80,7 +83,7 @@ aside.chat #deskBox{display:block}
 </header>
 <main>
   <nav id="list"></nav>
-  <div id="wrap"><div id="msg">讀取中…</div><canvas id="cv"></canvas><img id="pet" title="點我查詢" src="" alt="熊寶桌寵"></div>
+  <div id="wrap"><div id="msg">讀取中…</div><canvas id="cv"></canvas><iframe id="sysv" title="系統畫面"></iframe><img id="pet" title="點我查詢" src="" alt="熊寶桌寵"></div>
   <aside id="side"><div id="info"></div><div id="deskBox"><iframe id="desk" title="熊寶工作中"></iframe></div></aside>
 </main>
 <script>
@@ -297,10 +300,14 @@ function openChat(){const a=$('side'),f=$('desk');
  fetch(PA+'manifest.json?'+Date.now(),{cache:'no-store'}).then(r=>r.json()).then(mf=>{MF=mf;O=outfitNow();mf.animations.forEach(a=>byId[a.id]=a);play('wave',0,idle);
   setInterval(()=>{O=outfitNow()},600000)}).catch(()=>{});
 })();
+/* 中間顯示系統：網頁版系統直接開在中間；不是網頁的（例如桌寵安裝檔頁）就維持關聯圖並標出 */
+function openSys(n){const v=$('sysv');if(/^https:\/\/github\.com\//.test(n.u)){closeSys();return}
+ if(v.dataset.u!==n.u){v.src=n.u;v.dataset.u=n.u}$('wrap').classList.add('sys')}
+function closeSys(){$('wrap').classList.remove('sys')}
 /* 回復原始狀態：取消選取、收起右側窗格、速度與縮放回預設、重新排列置中 */
-function resetAll(){try{Q=null;QS=new Set()}catch(e){}side(null);$('side').classList.remove('chat');vis();
+function resetAll(){closeSys();const v=$('sysv');v.removeAttribute('src');delete v.dataset.u;try{Q=null;QS=new Set()}catch(e){}side(null);$('side').classList.remove('chat');vis();
  $('sp').value=100;SPD=1;$('spv').textContent='100%';panX=panY=0;place();for(let i=0;i<400;i++)step(false);requestAnimationFrame(()=>{size();fit()})}
-load().then(s=>{build(s);const TOP=['熊熊綜合系統','熊寶系統'],rk=x=>{const k=TOP.indexOf(x.n);return k<0?9:k};$('list').innerHTML=[...SY].sort((a,b)=>rk(a)-rk(b)).map(x=>`<button data-i="${x.i}" style="--sc:${x.col}">${esc(x.n)}</button>`).join('');$('list').insertAdjacentHTML('beforeend','<button id="bHome" class="home">回復原始狀態</button>');$('list').onclick=e=>{const b=e.target.closest('button');if(!b)return;if(b.id==='bHome'){resetAll();return}const n=SY[+b.dataset.i];side(sel===n?null:n)};size();place();for(let i=0;i<400;i++)step(false);fit();$('msg').remove();ready=true;loop();
+load().then(s=>{build(s);const TOP=['熊熊綜合系統','熊寶系統'],rk=x=>{const k=TOP.indexOf(x.n);return k<0?9:k};$('list').innerHTML=[...SY].sort((a,b)=>rk(a)-rk(b)).map(x=>`<button data-i="${x.i}" style="--sc:${x.col}">${esc(x.n)}</button>`).join('');$('list').insertAdjacentHTML('beforeend','<button id="bHome" class="home">回復原始狀態</button>');$('list').onclick=e=>{const b=e.target.closest('button');if(!b)return;if(b.id==='bHome'){resetAll();return}const n=SY[+b.dataset.i];if(sel===n){closeSys();side(null);return}openSys(n);side(n)};size();place();for(let i=0;i<400;i++)step(false);fit();$('msg').remove();ready=true;loop();
 }).catch(e=>{$('msg').textContent='讀取失敗，請稍後重新整理'});
 }
 </script>
