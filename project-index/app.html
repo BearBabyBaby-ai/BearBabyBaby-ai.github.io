@@ -4,7 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>專案索引</title>
+<title>熊寶總控系統</title>
+<link rel="icon" href="favicon.ico">
 <style>
 :root{--ink:#000000;--dim:#6b5a44;--line:#e2cba6;--frame:#876c4b;--head:#f6e7cf;--label:#fbf3e4;--blue:#0a6fb3;--bg1:#eaf6fb;--bg2:#f3fbf2}
 /* 色調比照熊寶系統電腦版的熊寶桌寵對話框：底色跟著時間區段（清晨、白天、傍晚、晚上） */
@@ -64,7 +65,7 @@ aside.chat #deskBox{display:block}
 </head>
 <body>
 <header>
-  <h1 id="ttl">專案索引</h1>
+  <h1 id="ttl">熊寶總控系統</h1>
   <div class="ctl">
     <button id="bReset">重新排列</button>
     <div class="zoom"><span class="lb">速度</span><input id="sp" type="range" min="0" max="1000" step="10" value="100" aria-label="速度"><output id="spv">100%</output></div>
@@ -146,7 +147,7 @@ function build(systems){
   const f={i:FE.length,n:fn,c:cn,col,t:'f'};FE.push(f);owners.forEach(o=>LK.push({s:SY[o],f}));
  }));
  nodes=[...SY,...FE];nodes.forEach((n,i)=>n.ph=i*2.399);nodes.forEach(n=>n.nb=new Set());LK.forEach(l=>{l.s.nb.add(l.f);l.f.nb.add(l.s)});
- $('ttl').innerHTML=`專案索引<span>${SY.length} 個系統・${FE.length} 項功能・${LK.length} 條關聯</span>`;
+ $('ttl').innerHTML=`熊寶總控系統<span>${SY.length} 個系統・${FE.length} 項功能・${LK.length} 條關聯</span>`;
 }
 /* 底色時間區段（台灣時間），和熊寶桌寵對話框一樣 */
 function tod(){const h=Number(new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Taipei',hour:'2-digit',hour12:false}).format(new Date()))%24;document.body.dataset.tod=h>=5&&h<7?'dawn':h>=7&&h<17?'day':h>=17&&h<19?'dusk':'night'}
