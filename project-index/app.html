@@ -8,14 +8,16 @@
 <style>
 :root{--ink:#000000;--dim:#6b5a44;--line:#e2cba6;--frame:#876c4b;--head:#f6e7cf;--label:#fbf3e4;--blue:#0a6fb3;--bg1:#eaf6fb;--bg2:#f3fbf2}
 /* 色調比照熊寶系統電腦版的熊寶桌寵對話框：底色跟著時間區段（清晨、白天、傍晚、晚上） */
-body[data-tod="dawn"]{--bg1:#fff1e8;--bg2:#e8f0fb}
+body{--h1:#0a6fb3;--h2:#1993c4;--h3:#34b6b8;--acc:#f4c430}
+body[data-tod="dawn"]{--bg1:#fff1e8;--bg2:#e8f0fb;--h1:#c2577f;--h2:#ee8f6b;--h3:#f4bf74;--acc:#ffd27a}
 body[data-tod="day"]{--bg1:#eaf6fb;--bg2:#f3fbf2}
-body[data-tod="dusk"]{--bg1:#ffe9dc;--bg2:#f7d9d3}
-body[data-tod="night"]{--bg1:#18213f;--bg2:#28305c}
+body[data-tod="dusk"]{--bg1:#ffe9dc;--bg2:#f7d9d3;--h1:#6b2a5e;--h2:#c2464f;--h3:#ee8a3c;--acc:#ffc861}
+body[data-tod="night"]{--bg1:#18213f;--bg2:#28305c;--h1:#0b1430;--h2:#1c2a5a;--h3:#39306e;--acc:#ffd66b}
 *{box-sizing:border-box;min-width:0}
 html,body{height:100%;margin:0}
 body{overflow:hidden;background:linear-gradient(180deg,var(--bg1),var(--bg2));color:var(--ink);font:15px/1.5 "Microsoft JhengHei","微軟正黑體","Noto Sans TC",system-ui,sans-serif;display:flex;flex-direction:column;transition:background .8s}
-header{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;padding:10px max(2vw,12px);background:var(--head);border-bottom:1.5px solid var(--line)}
+header{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;padding:10px max(2vw,12px);background:linear-gradient(120deg,var(--h1),var(--h2) 60%,var(--h3));border-bottom:3px solid var(--acc);color:#fff}
+header h1 span,header .zoom .lb,header .zoom output{color:#e8f6ff!important}
 h1{margin:0;font-size:clamp(17px,2.2vw,22px);font-weight:900}
 h1 span{color:var(--dim);font-weight:400;font-size:.72em;margin-inline-start:8px}
 .ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
@@ -48,7 +50,7 @@ body[data-tod="night"] aside{border-left-color:#3a4472}
 #list{width:min(210px,34vw);border-right:1.5px solid var(--line);padding:14px 10px;overflow:auto;display:flex;flex-direction:column;gap:6px;background:var(--label)}
 #list button{text-align:start;border-radius:10px;width:100%;font-size:15px;font-weight:700;color:#000;background:#fff;border:1.5px solid var(--line)}
 #list button:hover{background:#fdf6ea}
-#list button.on{background:#f6e7cf;border-color:#876c4b}
+#list button.on{background:var(--acc);border-color:var(--acc)}
 /* 熊寶查詢（和熊寶桌寵一樣） */
 #deskBox{flex:1;min-height:0;display:none}
 aside.chat #deskBox{display:block}
@@ -132,7 +134,7 @@ function build(systems){
  /* 每個系統一種顏色（淺底、框線、圖上光點），選單、圖、資訊窗格都用同一色；順序照左側選單 */
  const TOP=['熊熊綜合系統','熊寶系統'],rk=n=>{const k=TOP.indexOf(n);return k<0?9:k};
  const order=systems.map((s,i)=>i).sort((a,b)=>rk(systems[a].n)-rk(systems[b].n));
- SY=systems.map((s,i)=>({i,n:s.n,u:s.u,t:'s',col:'#876c4b',bg:'#f6e7cf'}));FE=[];LK=[];
+ SY=systems.map((s,i)=>({i,n:s.n,u:s.u,t:'s',col:'#0a6fb3',bg:'#f4c430'}));FE=[];LK=[];
  CATS.forEach(([cn,col,fs])=>fs.forEach(([fn,kw])=>{
   const owners=systems.map((s,i)=>s.f.includes(fn)?i:-1).filter(i=>i>=0);
   if(!owners.length)return;
@@ -184,14 +186,14 @@ function draw(){
  const f=sel||hov,qm=!f&&Q;
  LK.forEach(l=>{const on=qm?Q.includes(l.f):(!f||l.s===f||l.f===f);const[x1,y1]=dotS(l.s),[x2,y2]=dotS(l.f),mx=(x1+x2)/2,my=(y1+y2)/2;
   /* 線條：平常是細的淡色直線；點選時才用該功能的顏色加粗 */
-  const hl=(f||qm)&&on;ctx.strokeStyle=hl?(NIGHT()?'#f6e7cf':'#0a6fb3'):(NIGHT()?'#e2cba6':'#876c4b');ctx.globalAlpha=(f||qm)?(on?.9:.12):.45;ctx.lineWidth=hl?2:1;
+  const hl=(f||qm)&&on;ctx.strokeStyle=hl?l.f.col:(NIGHT()?'#7fc4ff':'#1993c4');ctx.globalAlpha=(f||qm)?(on?.9:.1):.35;ctx.lineWidth=hl?2:1;
   ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke()});
  const tm=TM;
  nodes.forEach(n=>{const[cx,cy]=toS(n),sys=n.t==='s',r=RAD(n)*zoom,[x,y]=dotS(n),on=rel(n);ctx.globalAlpha=on?1:.4;
   if(NIGHT()){const gr=r*(sys?4.2:3.6),g=ctx.createRadialGradient(x,y,0,x,y,gr);g.addColorStop(0,n.col);g.addColorStop(.25,n.col+'99');g.addColorStop(1,n.col+'00');
   ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,gr,0,7);ctx.fill()}
   else{ctx.fillStyle=n.col;ctx.beginPath();ctx.arc(x,y,r*(sys?1.05:1),0,7);ctx.fill()}
-  ctx.fillStyle=sys?'#f6e7cf':'#ffffff';ctx.beginPath();ctx.arc(x,y,r*(sys?.62:.55),0,7);ctx.fill();
+  ctx.fillStyle=sys?'#f4c430':'#ffffff';ctx.beginPath();ctx.arc(x,y,r*(sys?.62:.55),0,7);ctx.fill();
   if(sys){ctx.strokeStyle=n.col;ctx.lineWidth=1.4;ctx.beginPath();ctx.arc(x,y,r*1.25+Math.sin(tm*1.6+n.ph)*2*zoom,0,7);ctx.stroke()}
   if(f===n||(qm&&Q.includes(n))){ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(x,y,r*(sys?1.7:2.2),0,7);ctx.stroke()}
   const fs=(sys?18:12)*zoom,ly=y+r*(sys?1.6:1.6)+fs*.75;
