@@ -14,7 +14,9 @@ body[data-tod="day"]{--bg1:#eaf6fb;--bg2:#f3fbf2}
 body[data-tod="dusk"]{--bg1:#ffe9dc;--bg2:#f7d9d3;--h1:#6b2a5e;--h2:#c2464f;--h3:#ee8a3c;--acc:#ffc861}
 body[data-tod="night"]{--bg1:#18213f;--bg2:#28305c;--h1:#0b1430;--h2:#1c2a5a;--h3:#39306e;--acc:#ffd66b}
 *{box-sizing:border-box;min-width:0}
-html,body{height:100%;margin:0}
+html,body{height:100%;margin:0;overflow:clip;max-width:100vw}
+body{-webkit-user-select:none;user-select:none}
+input{-webkit-user-select:text;user-select:text}
 body{overflow:hidden;background:linear-gradient(180deg,var(--bg1),var(--bg2));color:var(--ink);font:15px/1.5 "Microsoft JhengHei","微軟正黑體","Noto Sans TC",system-ui,sans-serif;display:flex;flex-direction:column;transition:background .8s}
 header{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;padding:10px max(2vw,12px);background:#f6e7cf;border-bottom:1.5px solid #e2cba6;color:#000}
 h1{margin:0;font-size:clamp(17px,2.2vw,22px);font-weight:900}
@@ -42,7 +44,9 @@ aside .tags{display:flex;flex-wrap:wrap;gap:6px}
 aside .tags b{font-weight:400;font-size:13px;padding:3px 10px;border-radius:999px;background:#fff;border:1.5px solid var(--line);color:#000}
 aside .x{float:right;min-height:30px;padding:0 10px}
 aside a{color:var(--blue)!important}
-body[data-tod="night"] aside h2,body[data-tod="night"] h1 span{color:#fff}
+body[data-tod="night"] aside h2{color:#fff}
+header h1,header h1 span,header .lb,header output{color:#4a3b28!important}
+header h1{color:#000!important}
 body[data-tod="night"] aside .k{color:#c8cfe8}
 body[data-tod="night"] aside{border-left-color:#3a4472}
 /* 左邊系統列表 */
@@ -150,7 +154,7 @@ tod();setInterval(tod,60000);
 const NIGHT=()=>document.body.dataset.tod==='night';
 const cv=$('cv'),ctx=cv.getContext('2d');
 let W=0,H=0,dpr=1;
-function size(){const r=cv.getBoundingClientRect();dpr=Math.min(devicePixelRatio||1,2);W=r.width;H=r.height;cv.width=W*dpr;cv.height=H*dpr}
+function size(){const r=cv.getBoundingClientRect();dpr=Math.min(devicePixelRatio||1,2);W=r.width;H=r.height;cv.width=W*dpr;cv.height=H*dpr;if(ready&&nodes.length){panX=panY=0;fit()}}
 /* 每個點是光點，名稱標在光點下方；系統是大光球 */
 const RAD=n=>n.t==='s'?16:6;
 function boxW(n){ctx.font=n.t==='s'?'900 18px "Noto Sans TC",sans-serif':'12px "Noto Sans TC",sans-serif';return Math.max(ctx.measureText(n.n).width+(n.t==='s'?22:10),RAD(n)*5)}
@@ -225,7 +229,7 @@ function side(n){
 }
 let drag=null,panning=false,lx=0,ly=0,moved=0;
 const pos=e=>{const r=cv.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top]};
-cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);[lx,ly]=pos(e);moved=0;drag=hit(lx,ly);panning=!drag;cv.style.cursor='grabbing'});
+cv.addEventListener('pointerdown',e=>{e.preventDefault();cv.setPointerCapture(e.pointerId);[lx,ly]=pos(e);moved=0;drag=hit(lx,ly);panning=!drag;cv.style.cursor='grabbing'});
 cv.addEventListener('pointermove',e=>{const[mx,my]=pos(e),dx=mx-lx,dy=my-ly;if(drag||panning){moved+=Math.abs(dx)+Math.abs(dy);lx=mx;ly=my;if(drag){drag.x+=dx/zoom;drag.y+=dy/zoom;drag.vx=drag.vy=0}else{panX+=dx;panY+=dy}}else{hov=hit(mx,my);cv.style.cursor=hov?'pointer':'grab'}});
 cv.addEventListener('pointerup',e=>{cv.style.cursor='grab';if(drag&&moved>=6){drag=null;for(let i=0;i<120;i++)step(false)}if(moved<6){const n=hit(...pos(e));side(n&&n!==sel?n:null)}drag=null;panning=false});
 cv.addEventListener('pointerleave',()=>{hov=null});
@@ -235,7 +239,7 @@ function setZoom(v){v=Math.max(40,Math.min(200,v));zr.value=v;zoom=v/100;$('zv')
 zr.addEventListener('input',()=>setZoom(+zr.value));
 $('zIn').onclick=()=>setZoom(+zr.value+10);$('zOut').onclick=()=>setZoom(+zr.value-10);
 $('bReset').onclick=()=>{panX=panY=0;side(null);place();for(let i=0;i<400;i++)step(false);fit()};
-function fit(){let mx=1,my=1;nodes.forEach(n=>{mx=Math.max(mx,Math.abs(n.x)+n.w/2);my=Math.max(my,Math.abs(n.y)+n.h/2)});setZoom(Math.round(Math.max(40,Math.min(100,Math.min(W/2/mx,H/2/my)*95))))}
+function fit(){let mx=1,my=1;nodes.forEach(n=>{mx=Math.max(mx,Math.abs(n.x)+n.w/2+30);my=Math.max(my,Math.abs(n.y)+n.h/2+40)});setZoom(Math.round(Math.max(40,Math.min(100,Math.min(W/2/mx,H/2/my)*95))))}
 addEventListener('resize',size);
 
 /* 點熊寶：右側窗格改成熊寶查詢（和熊寶桌寵獨立版一樣的查詢方式）；點選單就換回系統資訊，兩者不同時出現 */
