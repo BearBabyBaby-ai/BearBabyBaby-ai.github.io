@@ -137,13 +137,13 @@ function draw(){
  const rows=layout(),W=COLX[3]+190,H=rows*ROW+20,svg=$('tree');
  svg.setAttribute('viewBox',`-10 -14 ${W} ${H}`);svg.setAttribute('width',W*zoom);svg.setAttribute('height',H*zoom);
  const hlName=sel&&sel.feat?sel.n:null,hlSys=sel&&sel.sys&&!sel.feat?sel:null;
- let L='',N='';
+ let L='',N='';drawn=[];shown=[];
  (function walk(n){
   if(!(n.kids&&n.open))return;
   n.kids.forEach(k=>{
    const x1=n.x+w(n),y1=n.y,x2=k.x,y2=k.y,mx=(x1+x2)/2;
    const on=(hlName&&k.feat&&k.n===hlName)||(hlName&&!k.feat&&has(k,hlName))||(hlSys&&(k===hlSys||n===hlSys||isIn(k,hlSys)));
-   L+=`<path class="lk${on?' hl':''}" d="M${x1},${y1}C${mx},${y1} ${mx},${y2} ${x2},${y2}"/>`;
+   drawn.push([n,k]);L+=`<path class="lk${on?' hl':''}" d="M${x1},${y1}C${mx},${y1} ${mx},${y2} ${x2},${y2}"/>`;
    walk(k);
   });
  })(root);
@@ -153,10 +153,20 @@ function draw(){
   const fill=n.d<=1?'#3a2a08':'#141b38';
   const hl=(hlName&&n.feat&&n.n===hlName)||(hlSys&&(n===hlSys));
   const dim=hlName&&n.feat&&n.n!==hlName;
-  const fold=n.kids&&n.kids.length&&!n.open?' ＋':'';
+  const fold=n.kids&&n.kids.length&&!n.open?' ＋':'';shown.push(n);
   N+=`<g class="nd${hl?' hl':''}${dim?' dim':''}" data-id="${n.id}" transform="translate(${n.x},${n.y})"><rect x="0" y="-11" rx="6" width="${w(n)+(fold?14:0)}" height="22" fill="${fill}" stroke="${col}"/><text x="${n.d===1?11:9}" y="1" fill="${n.d<=1?'#ffe2a3':'#e3e8fb'}" font-size="${n.d<=1?15:13}" font-weight="${n.d<=1?700:400}">${esc(n.n)}${fold}</text></g>`;
  });
  svg.innerHTML=L+N;
+ paths=[...svg.querySelectorAll('path')];groups=[...svg.querySelectorAll('.nd')];
+}
+/* 樹枝緩慢擺動 */
+let drawn=[],shown=[],paths=[],groups=[];
+const off=(n,tm)=>n.d===0?[0,0]:[Math.sin(tm*.35+n.id*1.7)*(1.5+n.d),Math.cos(tm*.28+n.id*2.3)*(1.5+n.d)];
+function anim(){
+ const tm=performance.now()/1000;
+ shown.forEach((n,i)=>{const[dx,dy]=off(n,tm);n.ax=n.x+dx;n.ay=n.y+dy;const g=groups[i];if(g)g.setAttribute('transform',`translate(${n.ax},${n.ay})`)});
+ drawn.forEach(([a,b],i)=>{const p=paths[i];if(!p||a.ax==null||b.ax==null)return;const x1=a.ax+w(a),y1=a.ay,x2=b.ax,y2=b.ay,mx=(x1+x2)/2;p.setAttribute('d',`M${x1},${y1}C${mx},${y1} ${mx},${y2} ${x2},${y2}`)});
+ requestAnimationFrame(anim);
 }
 function visible(n){let p=n.parent;while(p){if(!p.open)return false;p=p.parent}return true}
 function has(n,name){return (n.kids||[]).some(k=>k.n===name||has(k,name))}
@@ -188,7 +198,7 @@ const zr=$('zr');
 function setZoom(v){v=Math.max(40,Math.min(200,v));zr.value=v;zoom=v/100;$('zv').textContent=v+'%';if(root)draw()}
 zr.addEventListener('input',()=>setZoom(+zr.value));
 $('zIn').onclick=()=>setZoom(+zr.value+10);$('zOut').onclick=()=>setZoom(+zr.value-10);
-load().then(s=>{build(s);index();$('msg').remove();$('tree').style.display='';
+load().then(s=>{build(s);index();requestAnimationFrame(anim);$('msg').remove();$('tree').style.display='';
  const fit=Math.floor(($('wrap').clientWidth-32)/(COLX[3]+190)*100);setZoom(Math.min(100,Math.max(40,fit)));
 }).catch(e=>{$('msg').textContent='讀取失敗，請稍後重新整理'});
 }
