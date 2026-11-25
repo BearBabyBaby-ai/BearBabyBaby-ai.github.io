@@ -21,8 +21,10 @@ button:hover{border-color:#5566c4}
 input[type=range]{width:min(180px,34vw);accent-color:#e8634a}
 .zoom output{font-size:13px;color:var(--dim);width:3.2em;text-align:end}
 main{flex:1;display:flex;min-height:0}
-#wrap{flex:1;overflow:auto;padding:16px}
-#msg{color:var(--dim);padding:40px 20px;font-size:16px}
+#wrap{flex:1;position:relative;overflow:hidden}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:none}
+#msg{position:absolute;inset:0}
+#msg{color:var(--dim);padding:40px 20px;font-size:16px;z-index:1}
 svg text{font-family:inherit;dominant-baseline:middle}
 .lk{fill:none;transition:opacity .25s}
 .nd{cursor:pointer}
@@ -43,6 +45,7 @@ aside .x{float:right;min-height:30px;padding:0 10px}
 <header>
   <h1 id="ttl">專案索引</h1>
   <div class="ctl">
+    <button id="bReset">重新排列</button>
     <div class="zoom">
       <button id="zOut" aria-label="縮小">－</button>
       <input id="zr" type="range" min="40" max="200" value="100" aria-label="縮放">
@@ -52,7 +55,7 @@ aside .x{float:right;min-height:30px;padding:0 10px}
   </div>
 </header>
 <main>
-  <div id="wrap"><div id="msg">讀取中…</div><svg id="tree" style="display:none"></svg></div>
+  <div id="wrap"><div id="msg">讀取中…</div><canvas id="cv"></canvas></div>
   <aside id="side"></aside>
 </main>
 <script>
@@ -104,77 +107,85 @@ async function load(){
  return systems;
 }
 
-let SY=[],FE=[],LK=[],zoom=1,sel=null,hov=null;
+let SY=[],FE=[],LK=[],nodes=[],zoom=1,panX=0,panY=0,sel=null,hov=null,ready=false;
 function build(systems){
- SY=systems.map((s,i)=>({i,n:s.n,u:s.u,t:'s'}));FE=[];LK=[];
+ SY=systems.map((s,i)=>({i,n:s.n,u:s.u,t:'s',col:'#ffc861'}));FE=[];LK=[];
  CATS.forEach(([cn,col,fs])=>fs.forEach(([fn,kw])=>{
   const owners=systems.map((s,i)=>count(s.txt,kw)>=2?i:-1).filter(i=>i>=0);
   if(!owners.length)return;
   const f={i:FE.length,n:fn,c:cn,col,t:'f'};FE.push(f);owners.forEach(o=>LK.push({s:SY[o],f}));
  }));
+ nodes=[...SY,...FE];nodes.forEach(n=>n.nb=new Set());LK.forEach(l=>{l.s.nb.add(l.f);l.f.nb.add(l.s)});
  $('ttl').innerHTML=`專案索引<span>${SY.length} 個系統・${FE.length} 項功能・${LK.length} 條關聯</span>`;
 }
-const ROW=30,GAP=26,SX=0,FX=520,SW=150;
-function layout(){
- let y=0,last='';const heads=[];
- FE.forEach(f=>{if(f.c!==last){if(last)y+=GAP;heads.push({n:f.c,col:f.col,y});y+=ROW;last=f.c}f.y=y;y+=ROW});
- const H=y,step=H/(SY.length);
- SY.forEach((s,i)=>s.y=step*(i+.5));
- return {H,heads};
+const cv=$('cv'),ctx=cv.getContext('2d');
+let W=0,H=0,dpr=1;
+function size(){const r=cv.getBoundingClientRect();dpr=Math.min(devicePixelRatio||1,2);W=r.width;H=r.height;cv.width=W*dpr;cv.height=H*dpr}
+function boxW(n){ctx.font=n.t==='s'?'700 15px "Noto Sans TC",sans-serif':'13px "Noto Sans TC",sans-serif';return ctx.measureText(n.n).width+(n.t==='s'?24:18)}
+function place(){
+ const R=260;
+ SY.forEach((s,i)=>{const a=i/SY.length*Math.PI*2-Math.PI/2;s.x=Math.cos(a)*R;s.y=Math.sin(a)*R;s.vx=s.vy=0});
+ FE.forEach(f=>{const ps=[...f.nb];let x=0,y=0;ps.forEach(p=>{x+=p.x;y+=p.y});const k=ps.length===1?1.5:.6;f.x=x/ps.length*k+(Math.random()-.5)*60;f.y=y/ps.length*k+(Math.random()-.5)*60;f.vx=f.vy=0});
+ nodes.forEach(n=>{n.w=boxW(n);n.h=n.t==='s'?30:24});
 }
-const fw=f=>f.n.length*13.5+20;
-let paths=[],sg=[],fg=[];
-function draw(){
- const {H,heads}=layout(),W=FX+260,svg=$('tree');
- svg.setAttribute('viewBox',`-6 -18 ${W} ${H+24}`);svg.setAttribute('width',W*zoom);svg.setAttribute('height',(H+24)*zoom);
- let h='';
- LK.forEach((l,i)=>h+=`<path class="lk" data-i="${i}" stroke="${l.f.col}"/>`);
- heads.forEach(c=>h+=`<text x="${FX}" y="${c.y}" fill="${c.col}" font-size="13" font-weight="700">${esc(c.n)}</text>`);
- SY.forEach(s=>h+=`<g class="nd" data-t="s" data-i="${s.i}"><rect x="0" y="-14" rx="8" width="${SW}" height="28" fill="#3a2a08" stroke="#ffc861"/><text x="12" y="1" fill="#ffe2a3" font-size="15" font-weight="700">${esc(s.n)}</text></g>`);
- FE.forEach(f=>h+=`<g class="nd" data-t="f" data-i="${f.i}"><rect x="0" y="-11" rx="6" width="${fw(f)}" height="22" fill="#141b38" stroke="${f.col}"/><text x="10" y="1" fill="#e3e8fb" font-size="13">${esc(f.n)}</text></g>`);
- svg.innerHTML=h;
- paths=[...svg.querySelectorAll('path')];sg=[...svg.querySelectorAll('[data-t=s]')];fg=[...svg.querySelectorAll('[data-t=f]')];
- mark();
-}
-function mark(){
- const f=sel||hov;
- const on=l=>!f||l.s===f||l.f===f;
- paths.forEach((p,i)=>{const o=on(LK[i]);p.style.opacity=f?(o?.95:.06):.35;p.style.strokeWidth=f&&o?2.4:1.3});
- const rel=new Set();if(f)LK.forEach(l=>{if(l.s===f)rel.add(l.f);if(l.f===f)rel.add(l.s)});
- sg.forEach((g,i)=>g.classList.toggle('dim',!!f&&SY[i]!==f&&!rel.has(SY[i])));
- fg.forEach((g,i)=>g.classList.toggle('dim',!!f&&FE[i]!==f&&!rel.has(FE[i])));
-}
-/* 樹枝像被風吹一樣緩慢擺動，相鄰名稱一起上下，不會疊在一起 */
-function anim(){
+/* 力學：連線拉近、名稱框互相推開不重疊、整體往中心收；再加上很慢的漂移 */
+function step(drift){
+ const N=nodes.length;
+ for(let i=0;i<N;i++){const a=nodes[i];for(let j=i+1;j<N;j++){const b=nodes[j];
+  let dx=b.x-a.x,dy=b.y-a.y;const ox=(a.w+b.w)/2+14-Math.abs(dx),oy=(a.h+b.h)/2+10-Math.abs(dy);
+  if(ox>0&&oy>0){if(ox<oy){const p=ox*.25*(dx<0?-1:1);a.vx-=p;b.vx+=p}else{const p=oy*.25*(dy<0?-1:1);a.vy-=p;b.vy+=p}}
+  const d2=dx*dx+dy*dy+1;if(d2<90000){const f=(a.t==='s'&&b.t==='s'?900:260)/d2;a.vx-=dx*f;a.vy-=dy*f;b.vx+=dx*f;b.vy+=dy*f}}}
+ LK.forEach(l=>{const dx=l.f.x-l.s.x,dy=l.f.y-l.s.y,d=Math.hypot(dx,dy)||1,k=(d-150)*.006;l.s.vx+=dx/d*k*.3;l.s.vy+=dy/d*k*.3;l.f.vx-=dx/d*k;l.f.vy-=dy/d*k});
  const tm=performance.now()/1000;
- SY.forEach((s,i)=>{s.ax=SX+Math.sin(tm*.55+i*1.3)*10;s.ay=s.y+Math.sin(tm*.5+s.y*.006)*10;sg[i]&&sg[i].setAttribute('transform',`translate(${s.ax},${s.ay})`)});
- FE.forEach((f,i)=>{f.ax=FX+Math.sin(tm*.6+i*.45)*16;f.ay=f.y+Math.sin(tm*.5+f.y*.006)*7;fg[i]&&fg[i].setAttribute('transform',`translate(${f.ax},${f.ay})`)});
- LK.forEach((l,i)=>{const x1=l.s.ax+SW,y1=l.s.ay,x2=l.f.ax,y2=l.f.ay,m=(x1+x2)/2;paths[i]&&paths[i].setAttribute('d',`M${x1},${y1}C${m},${y1} ${m},${y2} ${x2},${y2}`)});
- requestAnimationFrame(anim);
+ nodes.forEach((n,i)=>{n.vx-=n.x*.0012;n.vy-=n.y*.0012;
+  if(drift){n.vx+=Math.cos(tm*.12+i*1.7)*.012;n.vy+=Math.sin(tm*.1+i*2.3)*.012}
+  if(n===drag)return;n.vx*=.82;n.vy*=.82;n.x+=n.vx;n.y+=n.vy});
 }
+const toS=n=>[W/2+panX+n.x*zoom,H/2+panY+n.y*zoom];
+function rel(n){const f=sel||hov;return !f||f===n||f.nb.has(n)}
+function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
+function draw(){
+ ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,H);
+ const f=sel||hov;
+ LK.forEach(l=>{const on=!f||l.s===f||l.f===f;const[x1,y1]=toS(l.s),[x2,y2]=toS(l.f),mx=(x1+x2)/2,my=(y1+y2)/2;
+  ctx.strokeStyle=l.f.col;ctx.globalAlpha=f?(on?.9:.05):.35;ctx.lineWidth=f&&on?2.2:1.2;
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.quadraticCurveTo(mx+(y2-y1)*.12,my-(x2-x1)*.12,x2,y2);ctx.stroke()});
+ nodes.forEach(n=>{const[x,y]=toS(n),w=n.w*zoom,h=n.h*zoom;ctx.globalAlpha=rel(n)?1:.2;
+  rr(x-w/2,y-h/2,w,h,6*zoom);ctx.fillStyle=n.t==='s'?'#3a2a08':'#141b38';ctx.fill();ctx.lineWidth=(f===n?2.4:1.2);ctx.strokeStyle=n.col;ctx.stroke();
+  ctx.fillStyle=n.t==='s'?'#ffe2a3':'#e3e8fb';ctx.font=`${n.t==='s'?700:400} ${(n.t==='s'?15:13)*zoom}px "Noto Sans TC",sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(n.n,x,y+1)});
+ ctx.globalAlpha=1;
+}
+function loop(){if(ready){step(true);draw()}requestAnimationFrame(loop)}
+function hit(mx,my){for(let k=nodes.length-1;k>=0;k--){const n=nodes[k],[x,y]=toS(n);if(Math.abs(mx-x)<=n.w*zoom/2&&Math.abs(my-y)<=n.h*zoom/2)return n}return null}
 function side(n){
- const sd=$('side');sel=n;mark();if(!n){sd.className='';return}
+ const sd=$('side');sel=n;if(!n){sd.className='';return}
  const tags=a=>`<div class="tags">${a.map(x=>`<b>${esc(x)}</b>`).join('')}</div>`;
  if(n.t==='f'){
   const ss=LK.filter(l=>l.f===n).map(l=>l.s.n);
   sd.innerHTML=`<button class="x">✕</button><h2>${esc(n.n)}</h2><div class="k">有這項功能的系統（${ss.length}）</div>${tags(ss)}`;
  }else{
   const fs=LK.filter(l=>l.s===n).map(l=>l.f);
-  const shared=SY.filter(s=>s!==n).map(s=>[s.n,fs.filter(f=>LK.some(l=>l.s===s&&l.f===f)).length]).filter(x=>x[1]).sort((a,b)=>b[1]-a[1]);
+  const shared=SY.filter(s=>s!==n).map(s=>[s.n,fs.filter(f=>f.nb.has(s)).length]).filter(x=>x[1]).sort((a,b)=>b[1]-a[1]);
   sd.innerHTML=`<button class="x">✕</button><h2>${esc(n.n)}</h2><div class="k">功能（${fs.length}）</div>${tags(fs.map(f=>f.n))}<div class="k">共用功能的系統</div>${tags(shared.map(x=>`${x[0]}　${x[1]} 項`))}<p><a href="${esc(n.u)}" target="_blank" rel="noopener" style="color:var(--gold)">開啟系統</a></p>`;
  }
- sd.className='on';sd.querySelector('.x').onclick=()=>side(null);
+ sd.className='on';sd.querySelector('.x').onclick=()=>{side(null);requestAnimationFrame(size)};
+ requestAnimationFrame(size);
 }
-const pick=e=>{const g=e.target.closest('.nd');return g?(g.dataset.t==='s'?SY:FE)[+g.dataset.i]:null};
-$('tree').addEventListener('click',e=>{const n=pick(e);side(n&&n!==sel?n:null)});
-$('tree').addEventListener('mouseover',e=>{hov=pick(e);mark()});
-$('tree').addEventListener('mouseleave',()=>{hov=null;mark()});
+let drag=null,panning=false,lx=0,ly=0,moved=0;
+const pos=e=>{const r=cv.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top]};
+cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);[lx,ly]=pos(e);moved=0;drag=hit(lx,ly);panning=!drag;cv.style.cursor='grabbing'});
+cv.addEventListener('pointermove',e=>{const[mx,my]=pos(e),dx=mx-lx,dy=my-ly;if(drag||panning){moved+=Math.abs(dx)+Math.abs(dy);lx=mx;ly=my;if(drag){drag.x+=dx/zoom;drag.y+=dy/zoom;drag.vx=drag.vy=0}else{panX+=dx;panY+=dy}}else{hov=hit(mx,my);cv.style.cursor=hov?'pointer':'grab'}});
+cv.addEventListener('pointerup',e=>{cv.style.cursor='grab';if(moved<6){const n=hit(...pos(e));side(n&&n!==sel?n:null)}drag=null;panning=false});
+cv.addEventListener('pointerleave',()=>{hov=null});
+cv.addEventListener('wheel',e=>{e.preventDefault();setZoom(Math.round(+zr.value*(e.deltaY<0?1.08:.93)))},{passive:false});
 const zr=$('zr');
-function setZoom(v){v=Math.max(40,Math.min(200,v));zr.value=v;zoom=v/100;$('zv').textContent=v+'%';if(SY.length)draw()}
+function setZoom(v){v=Math.max(40,Math.min(200,v));zr.value=v;zoom=v/100;$('zv').textContent=v+'%'}
 zr.addEventListener('input',()=>setZoom(+zr.value));
 $('zIn').onclick=()=>setZoom(+zr.value+10);$('zOut').onclick=()=>setZoom(+zr.value-10);
-load().then(s=>{build(s);requestAnimationFrame(anim);$('msg').remove();$('tree').style.display='';
- const fit=Math.floor(($('wrap').clientWidth-32)/(FX+260)*100);setZoom(Math.min(100,Math.max(40,fit)));
+$('bReset').onclick=()=>{panX=panY=0;side(null);place();for(let i=0;i<400;i++)step(false);fit()};
+function fit(){let mx=1,my=1;nodes.forEach(n=>{mx=Math.max(mx,Math.abs(n.x)+n.w/2);my=Math.max(my,Math.abs(n.y)+n.h/2)});setZoom(Math.round(Math.max(40,Math.min(100,Math.min(W/2/mx,H/2/my)*95))))}
+addEventListener('resize',size);
+load().then(s=>{build(s);size();place();for(let i=0;i<400;i++)step(false);fit();$('msg').remove();ready=true;loop();
 }).catch(e=>{$('msg').textContent='讀取失敗，請稍後重新整理'});
 }
 </script>
