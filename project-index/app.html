@@ -302,7 +302,13 @@ function openChat(){const a=$('side'),f=$('desk');
 })();
 /* 中間顯示系統：網頁版系統直接開在中間；不是網頁的（例如桌寵安裝檔頁）就維持關聯圖並標出 */
 function openSys(n){const v=$('sysv');if(/^https:\/\/github\.com\//.test(n.u)){closeSys();return}
- if(v.dataset.u!==n.u){v.src=n.u;v.dataset.u=n.u}$('wrap').classList.add('sys')}
+ if(v.dataset.u!==n.u){v.src=n.u;v.dataset.u=n.u}$('wrap').classList.add('sys');fitSys()}
+/* 澎湖資訊推薦要用電腦端版面（內部專用介面）：中間寬度不夠時等比例縮小，不讓它變成手機端 */
+const SYS_MIN={'/penghu-food/':1100};
+function fitSys(){const v=$('sysv'),w=$('wrap'),u=v.dataset.u||'',k=Object.keys(SYS_MIN).find(x=>u.includes(x)),cw=w.clientWidth,ch=w.clientHeight;
+ if(!k||!cw||cw>=SYS_MIN[k]){v.style.width=v.style.height=v.style.transform=v.style.transformOrigin='';return}
+ const sc=cw/SYS_MIN[k];v.style.transformOrigin='0 0';v.style.transform=`scale(${sc})`;v.style.width=SYS_MIN[k]+'px';v.style.height=(ch/sc)+'px'}
+try{new ResizeObserver(fitSys).observe($('wrap'))}catch(e){addEventListener('resize',fitSys)}
 function closeSys(){$('wrap').classList.remove('sys')}
 /* 回復原始狀態：取消選取、收起右側窗格、速度與縮放回預設、重新排列置中 */
 function resetAll(){closeSys();const v=$('sysv');v.removeAttribute('src');delete v.dataset.u;try{Q=null;QS=new Set()}catch(e){}side(null);$('side').classList.remove('chat');vis();
