@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>澎湖報價系統</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400&display=swap" rel="stylesheet">
+<style>
+/* VOICE: 報價工作單，清楚好操作
+   IDEA: 與報價參數設定表同一套配色：標題深藍、表頭灰藍、業者深色＋整列淺色
+   PICTURE: 右側即時報價卡
+   COLOUR and TYPE: 標題 #1F3864、表頭 #455A64、行程類別／業者／年齡／航空公司沿用表格顏色；不用粗體、不用藍色字
+   LAYOUT: 左欄步驟輸入、右欄結果卡；窄螢幕上下堆疊 */
+:root{color-scheme:light;
+--bg:#f3f5f7;--card:#ffffff;--ink:#212121;
+--mute:#5f6b73;--line:#dfe4e8;
+--sea:#1F3864;--sea-soft:#eceff1;--hd:#455A64;--coral:#880E4F;--coral-soft:#fce4ec}
+:root[data-theme]{color-scheme:light}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "Noto Sans TC",system-ui,sans-serif;overflow-x:clip}
+header{background:#1F3864;color:#fff;padding:18px 24px}
+header h1{margin:0;font-size:clamp(24px,3vw,32px);line-height:1.1;font-weight:400}
+header p{margin:4px 0 0;opacity:.85;font-size:14px}
+main{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:20px;padding:20px 24px 48px;max-width:none;margin:0}
+@media(max-width:980px){main{grid-template-columns:minmax(0,1fr)}}
+.col{display:flex;flex-direction:column;gap:16px}
+.sec{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+.sec h2{margin:0 0 12px;font-size:18px;font-weight:400;display:flex;align-items:center;gap:10px}
+.sec h2 i{font-style:normal;width:26px;height:26px;border-radius:50%;background:var(--hd);color:#fff;display:grid;place-items:center;font-size:13px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px 12px}
+label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mute)}
+input,select,textarea{font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:9px 10px;min-height:44px;width:100%}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--coral);outline-offset:1px}
+button{font:inherit;cursor:pointer;min-height:44px;border-radius:9px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:8px 14px}
+.pri{background:var(--sea);color:#fff;border-color:var(--sea)}
+.seg{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.seg button[aria-pressed=true]{background:var(--hd);color:#fff;border-color:var(--hd)}
+.chk{flex-direction:row;align-items:center;gap:8px;color:var(--ink);font-size:15px;min-height:44px}
+.chk input{width:20px;height:20px;min-height:0}
+.kids{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.kid{display:flex;align-items:center;gap:6px;border-radius:10px;padding:4px 6px 4px 4px;border:1px solid var(--line)}
+.kid em{color:#fff!important;border-radius:6px;padding:4px 8px}
+.kid input{width:64px;min-height:36px;padding:4px 6px}.kid em{font-style:normal;font-size:12px;color:var(--mute);white-space:nowrap}
+.kid button{min-height:36px;width:36px;padding:0;background:transparent;border:0}
+
+.hint{font-size:13px;color:var(--mute);margin:8px 0 0}
+.statbar{font-size:14px;padding:8px 12px;border-radius:10px;background:var(--sea-soft);color:var(--ink);margin:0 0 12px}
+.statbar.err{background:#FFEBEE;color:#B71C1C}
+.filters{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.tripbox{max-height:380px;overflow:auto;border-radius:12px}
+.grp{padding:8px 12px;border-bottom:1px solid var(--line)}
+.grp h3{margin:2px 0 6px;font-size:14px;font-weight:400;color:var(--ink)}
+.tr{display:flex;align-items:center;gap:8px;padding:6px 0;flex-wrap:wrap}
+.tag{font-size:12px;padding:2px 8px;border-radius:6px;color:#fff;white-space:nowrap}
+.tr{border-radius:8px;padding-inline:8px!important;margin:3px 0}
+.tr .nm{flex:1 1 140px}.tr .nt{font-size:12px;color:var(--mute)}
+.tr button{min-height:36px;padding:4px 12px}
+.picked{display:flex;flex-direction:column;gap:8px}
+.out{position:sticky;top:12px;align-self:start}
+@media(max-width:980px){.out{position:static}}
+.ticket{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.tk-top{background:#1F3864;color:#fff;padding:16px 18px}
+.tk-top .code{font-size:clamp(18px,2.2vw,22px);font-weight:400;line-height:1.3;overflow-wrap:anywhere}
+.tk-top .fl{font-size:14px;opacity:.9;margin-top:6px;white-space:pre-line}
+.tk-tabs{display:flex;border-bottom:1px dashed var(--line)}
+.tk-tabs button{flex:1;border:0;border-radius:0;background:transparent;border-bottom:3px solid transparent}
+.tk-tabs button[aria-selected=true]{border-bottom-color:var(--sea);color:var(--ink);background:var(--sea-soft)}
+.tk-body{padding:14px 16px}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+#ctab td:first-child,#ctab_calc td:first-child,#ctab_room td:first-child{min-width:7.5em}
+#ctab_calc td:nth-child(2),#ctab_room td:nth-child(2){min-width:9em}
+.sub-hd{margin:16px 0 8px;padding:6px 10px;background:var(--sea-soft);border-left:4px solid var(--sea);font-size:14px;color:var(--ink)}
+.sub-hd:first-child{margin-top:0}
+th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-weight:400;color:#fff;background:var(--hd);font-size:13px;white-space:nowrap}
+td.n,th.n{text-align:right;white-space:nowrap}
+tr.sum td{border-top:2px solid #1F3864;background:#ECEFF1}
+#ctab_calc tr.sum td:nth-child(3),#ctab_room tr.sum td:nth-child(3){background:#FCE4EC;color:#880E4F}
+tr.subsum td{background:#F5F7F9;color:#1F3864;border-top:1px dashed #90A4AE}
+tr.room-h td{background:var(--sea-soft);color:var(--ink);font-size:13px}
+pre{white-space:pre-wrap;margin:0;font:15px/1.7 "Noto Sans TC",system-ui,sans-serif;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px;max-height:520px;overflow:auto}
+.acts{display:flex;flex-wrap:wrap;gap:8px;padding:0 16px 16px}
+.note{font-size:12px;color:var(--mute);padding:0 16px 14px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);opacity:0;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;transition:.25s;pointer-events:none;font-size:14px;z-index:99}
+.toast.on{opacity:1;transform:translateX(-50%)}
+@media(prefers-reduced-motion:reduce){.toast{transition:none}}
+.empty{color:var(--mute);font-size:14px;padding:10px 0;margin:0}
+.cnt{display:grid;grid-template-columns:minmax(0,1fr) auto;border-radius:8px;overflow:hidden;border:0}
+.cnt .ck{color:#fff;padding:6px 8px;font-size:13px;display:flex;align-items:center}
+.cnt .cv{display:flex;align-items:center;gap:4px;padding:3px 5px;color:#212121}
+.cnt .cv b{font-weight:400;min-width:18px;text-align:center;font-size:14px}
+.cnt button{width:28px;height:28px;min-height:28px;padding:0;background:#fff;border-radius:6px;font-size:14px;line-height:1}
+.room{border-radius:12px;overflow:hidden;margin-bottom:10px;border:0;display:block;padding:0}
+.room .rh{display:flex;justify-content:space-between;align-items:center;color:#fff;padding:6px 8px 6px 12px;font-size:14px}
+.room .rh .x{color:#fff;background:transparent;border:0;min-height:36px}
+.room .rb{padding:10px 12px;color:#212121}
+.rp{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:6px;margin-top:8px}
+.rs{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;align-items:end;margin-bottom:8px;padding-bottom:8px;border-bottom:1px dashed rgba(0,0,0,.15)}
+.rs label{color:#37474F}
+.tg{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(0,1.4fr) auto;gap:8px;align-items:center;padding:8px 10px;border-bottom:1px solid #fff;color:#212121}
+.tg .gn{font-size:15px}.tg select{min-height:38px;padding:4px 8px;font-size:14px}.tg button{min-height:38px;padding:4px 12px;background:#fff}
+@media(max-width:560px){.tg{grid-template-columns:auto minmax(0,1fr)}.tg select{grid-column:1/-1}.tg button{grid-column:1/-1}}
+.pk{border-radius:10px;padding:8px 10px;color:#212121;display:block}
+.pt{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr) 96px 40px;gap:6px;align-items:center;margin-bottom:6px}
+.pt select{min-height:38px;padding:4px 8px;font-size:14px}.pt .x{background:transparent;border:0;min-height:38px}
+@media(max-width:560px){.pt{grid-template-columns:minmax(0,1fr) 96px 40px}.pt select[data-f="i"]{grid-column:1/-1;order:5}}
+.leg4{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;align-items:end}
+@media(max-width:720px){.leg4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.leg-pair{display:flex;gap:8px;align-items:flex-end}
+.leg-pair label{flex:1}
+.leg-pair .x{flex:0 0 auto;width:44px;height:44px;padding:0}
+.legadd{grid-column:1/-1;display:flex;gap:10px}.legadd button{flex:1}
+.warnbox{background:#FFEBEE;color:#B71C1C;border:1px solid #FFCDD2;border-radius:10px;padding:8px 12px;font-size:13px;margin-top:8px;line-height:1.5}
+.tag-slot{font-size:12px;padding:2px 6px;border-radius:5px;background:rgba(255,255,255,.75);color:#212121;margin-left:6px}
+</style>
+</head>
+<body>
+<header><h1>澎湖報價系統</h1><p>輸入需求，右側即時產生成本分析表與給客人看的報價。尚未設定的價格以「—」顯示。</p></header>
+<main>
+<div class="col">
+ <section class="sec"><h2><i>1</i>客人與日期</h2>
+  <div class="grid">
+   <label>代表人<input id="cname"></label>
+   <label>出發日<input id="d1" type="date"></label>
+   <label>回程日<input id="d2" type="date"></label>
+   <label>報價版本<input id="ver" value="" placeholder="例如：客製化-v1"></label>
+  </div>
+  <div class="grid" style="margin-top:6px">
+   <label class="chk"><input type="checkbox" id="oldc">老顧客優惠</label>
+   <label class="chk"><input type="checkbox" id="early">早鳥優惠</label>
+   <label class="chk"><input type="checkbox" id="firework_d1">第一天為煙火施放日</label>
+  </div>
+  <p class="hint" id="dayhint"></p>
+ </section>
+
+ <section class="sec"><h2><i>2</i>交通</h2>
+  <div class="seg" id="trans"></div>
+  <div class="grid" id="transf"></div>
+ </section>
+
+ <section class="sec"><h2><i>3</i>總人數(人別)</h2>
+  <div class="rp" id="ppl"></div>
+  <p class="hint" id="pplhint"></p>
+ </section>
+
+ <section class="sec"><h2><i>4</i>住宿與機車</h2>
+  <div class="grid" style="margin-bottom:10px">
+   <label>機車分攤<select id="bikemode"><option value="room">依房型各自配車</option><option value="total">依總人數配車</option><option value="none">需求未標房型</option></select></label>
+   <p class="hint" style="grid-column:1/-1;margin:0">每間可獨立選擇不同民宿、晚數與房型；先填入住人別，系統會依所選民宿與人數篩選適合的房型並判斷機車台數。</p>
+  </div>
+  <p class="statbar" id="roomhint"></p>
+  <div id="rooms"></div>
+  <button id="addroom">＋ 新增房間</button>
+ </section>
+
+ <section class="sec"><h2><i>5</i>選擇行程</h2>
+  <div class="filters" id="cats"></div>
+  <label style="margin-bottom:10px">搜尋（支援同義詞：海牧、七望、夜釣、浮潛、新揚等）<input id="q" placeholder="例如：七美、海牧、七望、夜釣、浮潛"></label>
+  <div class="tripbox" id="trips"></div>
+  <p class="hint" id="offseason_hint" style="color:#B71C1C"></p>
+ </section>
+
+ <section class="sec"><h2><i>6</i>已選行程</h2>
+  <div class="picked" id="picked"></div>
+  <div id="schedwarn"></div>
+ </section>
+
+ <section class="sec"><h2><i>7</i>其他</h2>
+  <div class="grid">
+   <label>單購保險（人數）<input id="ins" type="number" min="0" value="0"></label>
+   <label>優惠截止日<input id="dl" type="date" value="2026-12-10"></label>
+  </div>
+  <div class="grid" style="margin-top:10px;grid-template-columns:minmax(0,1fr)">
+   <label>報價贈送項目（一行一項）<textarea id="gift" rows="3">贈澎湖機場到配合民宿來回接送各乙次
+贈澎湖QR導航精美地圖
+贈澎湖離島免稅卡</textarea></label>
+   <label>需注意事項（一行一項）<textarea id="memo" rows="6">因每年機票、住宿、行程費用均會變動，如{年}當年度業者有公告變動將會提前告知並重新確認相關報價。
+上述費用為半自由行模式，需自行前往觀看景點、購買美食小吃。
+機票價格係依各航空公司公告為準，若因國際原油價格波動致使票價調整，相關票價差額（包含增加或減少）將於辦理登機手續時，由機場櫃檯人員依實際情況辦理補收或退還。</textarea></label>
+  </div>
+ </section>
+</div>
+
+<aside class="out">
+ <div class="ticket">
+  <div class="tk-top"><div class="code" id="code"></div><div class="fl" id="fl"></div></div>
+  <div class="tk-tabs" role="tablist">
+   <button role="tab" aria-selected="true" data-t="cost">一、成本分析表</button>
+   <button role="tab" aria-selected="false" data-t="cust">二、給客人看的報價</button>
+  </div>
+  <div class="tk-body" id="pcost">
+   <div class="sub-hd">每位估價明細（依總人數人別與房型拆算）</div>
+   <div class="scroll"><table id="ctab"></table></div>
+   <div class="sub-hd">每間房間費用明細</div>
+   <div class="scroll"><table id="ctab_room"></table></div>
+   <div class="sub-hd">總費用計算與金額對照</div>
+   <div class="scroll"><table id="ctab_calc"></table></div>
+   <p class="hint" id="miss_hint" style="color:#B71C1C;margin-top:8px"></p>
+  </div>
+  <div class="tk-body" id="pcust" hidden><pre id="ctext"></pre></div>
+  <div class="acts">
+   <button class="pri" id="copy">複製目前內容</button>
+   <button id="save">存入報價記錄</button>
+   <button id="reset">清空重填</button>
+  </div>
+  <p class="note">範例資料：柯婷淯 0522-0525 台中搭機 5 人。「存入報價記錄」接上資料後才會生效。</p>
+ </div>
+</aside>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+const num=s=>{const t=String(s??"").replace(/[,+＋\s]/g,"");if(t===""||isNaN(+t))return null;return +t;};
+function parseAll(R){const v=R.param,sp=R.special||[];const A=i=>String((v[i]||[])[0]||"").trim(),B=i=>String((v[i]||[])[1]||"").trim();
+ const empty=i=>!(v[i]||[]).some(x=>String(x).trim()!=="");const find=f=>{for(let i=0;i<v.length;i++)if(f(i))return i;return -1;};
+ const D={trips:[],cityAir:{},boatTimes:[],cabins:[],rooms:[],hol:[],price:{air:{},boat:{},cabin:{},room:{},bike:null,ins:null,clean:null,old:null,early:null}};
+ const pick=(row,hdr,names)=>{const o={};for(const[k,n]of Object.entries(names)){const c=hdr.findIndex(x=>String(x).trim().startsWith(n));o[k]=c<0?null:num(row[c]);}return o;};
+ // 機票售價
+ let i=find(i=>A(i)==="機票（來回）");
+ if(i>=0){const h=v[i+1]||[];for(let r=i+2;r<v.length&&!empty(r);r++)D.price.air[A(r)]=pick(v[r],h,{adult:"成人",c:"兒童",senior:"敬老",c0:"嬰兒"});}
+ // 出發地與航空公司
+ i=find(i=>A(i)==="機票（來回）成本");
+ if(i>=0)for(let r=i+1;r<v.length;r++){const a=A(r);if(empty(r)&&r>i+3)break;if(a.includes("｜")){const[c,al]=a.split("｜");(D.cityAir[c]=D.cityAir[c]||[]).push(al);}}
+ Object.keys(D.price.air).forEach(c=>{if(!D.cityAir[c])D.cityAir[c]=["立榮航空"];});
+ // 布袋港船票
+ i=find(i=>A(i)==="船票（布袋港來回）");
+ if(i>=0){const h=v[i+1]||[];for(let r=i+2;r<v.length&&!empty(r);r++){D.boatTimes.push(A(r));D.price.boat[A(r)]=pick(v[r],h,{adult:"成人",c:"兒童",senior:"敬老",c0:"嬰兒"});}}
+ // 高雄船票（售價）
+ i=find(i=>A(i).startsWith("船票")&&A(i).includes("高雄")&&!A(i).includes("成本"));
+ if(i>=0){const h=v[i+1]||[];for(let r=i+2;r<v.length;r++){if(A(r).startsWith("船票"))break;if(empty(r)){if(D.cabins.length)break;continue;}
+  D.cabins.push(A(r));D.price.cabin[A(r)]=pick(v[r],h,{adult:"成人",c:"兒童",senior:"敬老",c0:"嬰兒"});}}
+ // 住宿
+ i=find(i=>A(i).startsWith("住宿房價"));
+ if(i>=0){const h=v[i+1]||[];let inn="";const cd=h.findIndex(x=>x==="平日"),ch=h.findIndex(x=>x==="連續假日");
+  for(let r=i+2;r<v.length;r++){if(A(r)==="機車"||A(r)==="其他")break;if(empty(r))continue;if(A(r))inn=A(r);const t=B(r);if(!t)continue;
+   (D.price.room[inn]=D.price.room[inn]||{})[t]=[num(v[r][cd]),num(v[r][ch])];
+   if(!D.rooms.some(x=>x[0]===t)){const base=t.startsWith("雙人房")?2:t.startsWith("四人房")?4:t.startsWith("六人房")?6:2;const add=/加1床/.test(t)?1:/加床/.test(t)?2:0;D.rooms.push([t,base+add,add?1:0]);}}}
+ // 機車與其他
+ for(let r=0;r<v.length;r++){const b=B(r),d=num((v[r]||[])[3]);
+  if(b==="普通重型機車")D.price.bike=d;else if(b==="單購保險")D.price.ins=d;else if(b==="住宿清潔費")D.price.clean=d;else if(b==="老顧客優惠")D.price.old=d;else if(b==="早鳥優惠")D.price.early=d;}
+ // 行程
+ i=find(i=>B(i)==="行程主類別");
+ if(i>=0)for(let r=i+1;r<v.length;r++){const w=v[r]||[];if(!String(w[1]||"").trim()&&!String(w[3]||"").trim())continue;
+  const pr=[num(w[5]),num(w[6]),num(w[7]),num(w[8])];
+  D.trips.push([String(w[0]||"").trim(),String(w[1]||"").trim(),String(w[2]||"").trim(),String(w[3]||"").trim(),String(w[4]||"").trim(),pr.some(x=>x!=null)?pr:null]);}
+ // 連續假期
+ sp.forEach(w=>{if(String(w[0]).trim()!=="機票搶票")return;const m=String(w[4]||"").match(/(\d{4}\/\d{1,2}\/\d{1,2})\s*-\s*(\d{4}\/\d{1,2}\/\d{1,2})/);if(!m)return;
+  const z=s=>s.split("/").map((x,j)=>j?x.padStart(2,"0"):x).join("/");D.hol.push([String(w[1]).replace(/-?搶票日$/,"").trim(),z(m[1]),z(m[2])]);});
+ return D;}
+
+function boot(D){
+const TRIPS=D.trips;
+const CITY_AIR=D.cityAir;
+const BOAT_TIME=D.boatTimes.length?D.boatTimes:["平日","假日","連續假日"];
+const CABIN=D.cabins;
+const ROOMS=D.rooms;
+const CAP=Object.fromEntries(ROOMS.map(r=>[r[0],r[1]]));
+const INNS=Object.keys(D.price.room);
+const DEF_INN=INNS[0]||"";
+const CATS=["全部","本島行程","本島周圍海域行程","跳島行程","玩水行程"];
+const CATCOL={本島行程:"#283593",本島周圍海域行程:"#00695C",跳島行程:"#6D4C41",玩水行程:"#BF360C",全部:"#455A64"};
+const AIRCOL={立榮航空:["#1C5E21","#B6D7A8"],華信航空:["#49148C","#A4C2F4"]};
+const HOL=D.hol;
+const dkey=v=>String(v).replace(/\//g,"-");
+function holiday(){const a=$("d1").value,b=$("d2").value;if(!a||!b)return null;return HOL.find(h=>dkey(h[1])<=b&&dkey(h[2])>=a)||null;}
+const isHoli=()=>!!holiday();
+const RMC=[["#00838F","#B2EBF2"],["#AD1457","#F8BBD0"],["#827717","#F0F4C3"],["#4E342E","#D7CCC8"],["#E65100","#FFE0B2"],["#37474F","#CFD8DC"]];
+/* 人別順序：成人(12-64歲) -> 兒童(2-5歲) -> 兒童(6-11歲) -> 敬老 -> 嬰兒 -> 愛心 -> 愛陪 */
+const KEYS=["adult","c1","c2","senior","c0","love","love_acc"];
+const KCOL={adult:"#B71C1C",c1:"#E65100",c2:"#827717",senior:"#1B5E20",c0:"#4A148C",love:"#0277BD",love_acc:"#00695C"};
+const KLT={adult:"#FFCDD2",c1:"#FFE0B2",c2:"#F0F4C3",senior:"#C8E6C9",c0:"#E1BEE7",love:"#B3E5FC",love_acc:"#B2DFDB"};
+const COL=(()=>{const PAL=[["#C62828","#FFCDD2"],["#E65100","#FFE0B2"],["#2E7D32","#C8E6C9"],["#6A1B9A","#E1BEE7"],["#00838F","#B2EBF2"],["#6D4C41","#D7CCC8"],["#AD1457","#F8BBD0"],["#283593","#C5CAE9"],["#B8860B","#FFF59D"],["#37474F","#CFD8DC"],["#0277BD","#B3E5FC"]];
+ const seq=[];TRIPS.forEach(t=>{const v=t[2]||"";if(v&&seq[seq.length-1]!==v)seq.push(v);});
+ const near={};seq.forEach((v,i)=>{near[v]=near[v]||new Set();for(let d=-3;d<=3;d++){const w=seq[i+d];if(d&&w&&w!==v)near[v].add(w);}});
+ const col={},use=PAL.map(()=>0);seq.forEach(v=>{if(v in col)return;const bad=new Set([...near[v]].filter(w=>w in col).map(w=>col[w]));
+  let best=-1;PAL.forEach((_,k)=>{if(!bad.has(k)&&(best<0||use[k]<use[best]))best=k;});if(best<0)best=0;col[v]=best;use[best]++;});
+ return TRIPS.map(t=>t[2]?{dk:PAL[col[t[2]]][0],lt:PAL[col[t[2]]][1]}:{dk:"#616161",lt:"#E0E0E0"});})();
+const GROUPS=(()=>{const g=[],m={};TRIPS.forEach((t,i)=>{if(!(t[1] in m)){m[t[1]]=g.length;g.push({name:t[1],cat:t[0],rows:[],manualSel:false});}g[m[t[1]]].rows.push(i);});
+ g.forEach(x=>{const nb=x.rows.find(i=>TRIPS[i][2]==="南海燒烤"||TRIPS[i][2]==="南海BBQ");x.def=x.name.includes("BBQ")&&nb!=null?nb:x.rows[0];});return g;})();
+const dn=i=>TRIPS[i][3]==="露天BBQ吃到飽"?"BBQ吃到飽":TRIPS[i][3];
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const P=o=>Object.assign({adult:0,c1:0,c2:0,senior:0,c0:0,love:0,love_acc:0},o);
+const S={trans:"air",city:Object.keys(CITY_AIR).includes("台中")?"台中":Object.keys(CITY_AIR)[0],air:"華信航空",goL:[{c:"AE-781",t:"07:30"}],backL:[{c:"AE-792",t:"17:35"}],boat:"平日",cabin:"經濟座艙",
+ p:P({adult:4,c0:1}),rooms:[],picked:[],cat:"全部",q:""};
+$("cname").value="柯婷淯";$("d1").value="2027-05-22";$("d2").value="2027-05-25";
+const air=()=>S.trans==="air";
+function LAB(){const b=air()?"搭機":"搭船";return{
+ adult:"成人（12-64歲）",
+ c1:b+"兒童（"+(air()?"2-5歲":"3-5歲")+"）",
+ c2:b+"兒童（6-11歲）",
+ senior:"敬老（滿65歲）",
+ c0:b+"嬰兒（"+(air()?"未滿2歲":"未滿3歲")+"）",
+ love:"愛心",
+ love_acc:"愛陪"
+};}
+const sum=o=>KEYS.reduce((s,k)=>s+(+o[k]||0),0);
+const total=()=>sum(S.p);
+const kidsN=o=>(+o.c0||0)+(+o.c1||0)+(+o.c2||0);
+function pplShort(o){const s={adult:"成人",c1:air()?"2-5歲":"3-5歲",c2:"6-11歲",senior:"敬老",c0:air()?"未滿2歲":"未滿3歲",love:"愛心",love_acc:"愛陪"};return KEYS.filter(k=>+o[k]).map(k=>s[k]+o[k]+"位").join("、");}
+function roomStayLabel(o){
+ const nameMap={adult:"成人",c1:"兒童",c2:"兒童",senior:"敬老",c0:"嬰兒",love:"愛心",love_acc:"愛陪"};
+ const merged={};
+ KEYS.forEach(k=>{
+  const cnt=+o[k]||0;
+  if(!cnt)return;
+  const lbl=nameMap[k];
+  merged[lbl]=(merged[lbl]||0)+cnt;
+ });
+ return Object.entries(merged).map(([lbl,cnt])=>`${lbl}${cnt}位`).join("+");
+}
+function nights(){const a=new Date($("d1").value),b=new Date($("d2").value);const n=Math.round((b-a)/864e5);return isFinite(n)&&n>0?n:0}
+function md(v){const d=new Date(v);return isNaN(d)?"":String(d.getMonth()+1).padStart(2,"0")+String(d.getDate()).padStart(2,"0")}
+function ymd(v){const d=new Date(v);return isNaN(d)?"":d.getFullYear()+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+String(d.getDate()).padStart(2,"0")}
+
+/* ====== 業務規則 1：季節判斷（旺季 04/01-10/10 vs 淡季 10/11-03/31）與優先預設業者 ====== */
+function isPeakSeason(){
+ const v=$("d1").value;
+ if(!v)return false;
+ const mmdd=md(v);
+ return mmdd>="0401"&&mmdd<="1010";
+}
+function isOffSeason(){
+ const v=$("d1").value;
+ if(!v)return false;
+ const mmdd=md(v);
+ return mmdd>="1011"||mmdd<="0331";
+}
+function isHiddenInOffSeason(g){
+ if(!isOffSeason())return false;
+ if(g.cat==="玩水行程")return true;
+ return g.rows.some(idx=>{
+  const t=TRIPS[idx];
+  const full=`${t[0]||""} ${t[1]||""} ${t[2]||""} ${t[3]||""} ${t[4]||""}`;
+  return /水上活動|玩水|浮潛|北海|吉貝|姑婆嶼|險礁|目斗嶼/.test(full);
+ });
+}
+function getPreferredRow(g){
+ const peak=isPeakSeason();
+ const off=isOffSeason();
+ const gName=g.name;
+ const hasAny=(txt,kws)=>kws.some(k=>txt.includes(k));
+ const findByVendor=vList=>{
+  for(const v of vList){
+   const hit=g.rows.find(idx=>(TRIPS[idx][2]||"").includes(v)||(TRIPS[idx][3]||"").includes(v));
+   if(hit!=null)return hit;
+  }
+  return null;
+ };
+ if(gName.includes("BBQ")){
+  const hit=findByVendor(["南海燒烤","南海BBQ"]);
+  if(hit!=null)return hit;
+ }
+ if(gName.includes("東海夜釣")){
+  const hit=findByVendor(["晶翔號"]);
+  if(hit!=null)return hit;
+ }
+ if(off){
+  if(hasAny(gName,["海洋牧場","海牧"])){
+   const hit=findByVendor(["星光海洋牧場","星光"]);
+   if(hit!=null)return hit;
+  }
+ }
+ if(peak){
+  if(hasAny(gName,["海洋牧場","海牧"])){
+   const hit=findByVendor(["和慶"]);
+   if(hit!=null)return hit;
+  }
+  if(hasAny(gName,["南海二島","南海-南海二島","七美望安","七望"])){
+   const hit=findByVendor(["東北"]);
+   if(hit!=null)return hit;
+  }
+  if(gName.includes("花火船")&&!gName.includes("夜釣")){
+   const hit=findByVendor(["海安","南海金八達","南海金巴達"]);
+   if(hit!=null)return hit;
+  }
+  if(!gName.includes("東海夜釣")&&!gName.includes("花火船")&&hasAny(gName,["市區夜釣","夜釣"])){
+   const hit=findByVendor(["大益夜釣","大益"]);
+   if(hit!=null)return hit;
+  }
+  if(gName.includes("吉貝")&&hasAny(gName,["水上活動","玩水"])){
+   const hit=findByVendor(["名揚","新揚"]);
+   if(hit!=null)return hit;
+  }
+ }
+ return g.def;
+}
+function applyPreferredVendors(){
+ GROUPS.forEach(g=>{
+  if(!g.manualSel)g.sel=getPreferredRow(g);
+ });
+}
+
+/* ====== 業務規則 2：同義詞 / 相同識別搜尋比對 ====== */
+const SYNONYM_GROUPS=[
+ ["海洋牧場","海牧"],
+ ["南海二島(七美、望安)","南海二島(七美望安)","南海二島","南海-南海二島","七美望安","七望"],
+ ["專業浮潛","浮潛"],
+ ["名揚","新揚"]
+];
+function expandQuery(raw){
+ const q=raw.trim();
+ if(!q)return[];
+ const terms=new Set([q]);
+ if(q==="市區夜釣"){
+  terms.add("夜釣");
+ }
+ SYNONYM_GROUPS.forEach(grp=>{
+  if(grp.some(w=>w.includes(q)||q.includes(w))){
+   grp.forEach(w=>terms.add(w));
+  }
+ });
+ return[...terms];
+}
+function matchTripSearch(g,rawQ){
+ const q=rawQ.trim();
+ if(!q)return true;
+ const terms=expandQuery(q);
+ const isCityNightOnly=(q==="市區夜釣");
+ return g.rows.some(idx=>{
+  const text=TRIPS[idx].join(" ");
+  if(isCityNightOnly&&text.includes("東海夜釣"))return false;
+  return terms.some(t=>text.includes(t));
+ });
+}
+
+/* ====== 業務規則 3：排程時段歸類、預設天數與限制檢核 ====== */
+function classifyTrip(i){
+ const t=TRIPS[i];
+ const cat=t[0]||"",grp=t[1]||"",name=t[3]||"",note=t[4]||"";
+ const full=`${cat} ${grp} ${name} ${note}`;
+ const isEvening=/花火船|夜釣|BBQ|夜間潮間帶/.test(full);
+ const isTwilight=/黃昏之旅/.test(full);
+ const isJibeiFirework=/吉貝/.test(full)&&/花火/.test(full);
+ const isIslandJump=(cat==="跳島行程")||/七美|望安|南海二島|南方四島|東吉|藍洞|吉貝|姑婆嶼|員貝|鳥嶼|澎澎灘|桶盤|虎井/.test(full);
+ const isFullDay7to17=/七美|南方四島|東吉|藍洞/.test(full)&&!/南海二島/.test(full);
+ const isSouthTwo=/南海二島|七望/.test(full);
+ const isLastDayBanned=/夜釣小管|夜釣|花火船|夜釣花火船|BBQ/.test(full);
+ const isBBQ=/BBQ/.test(full);
+ return{isEvening,isTwilight,isJibeiFirework,isIslandJump,isFullDay7to17,isSouthTwo,isLastDayBanned,isBBQ};
+}
+function getBackFlightMins(){
+ if(!air())return null;
+ const times=S.backL.map(x=>x.t).filter(Boolean);
+ if(!times.length)return null;
+ const mins=times.map(t=>{const[h,m]=t.split(":").map(Number);return h*60+(m||0);});
+ return Math.max(...mins);
+}
+function getGoFlightMins(){
+ if(!air())return null;
+ const times=S.goL.map(x=>x.t).filter(Boolean);
+ if(!times.length)return null;
+ const mins=times.map(t=>{const[h,m]=t.split(":").map(Number);return h*60+(m||0);});
+ return Math.min(...mins);
+}
+function suggestDefaultDay(i){
+ const days=Math.max(nights()+1,1);
+ const c=classifyTrip(i);
+ const fwD1=$("firework_d1")&&$("firework_d1").checked;
+ if(c.isJibeiFirework&&fwD1)return 1;
+ if(c.isTwilight)return 1;
+ if(c.isIslandJump)return days>=2?2:1;
+ if(c.isEvening){
+  const goM=getGoFlightMins();
+  if(days>=2&&goM!=null&&goM>=17*60)return 2;
+  return 1;
+ }
+ return 1;
+}
+function validateSchedule(){
+ const days=Math.max(nights()+1,1);
+ const fwD1=$("firework_d1")&&$("firework_d1").checked;
+ const backM=getBackFlightMins();
+ const warns=[];
+ const eveningByDay={};
+ S.picked.forEach(p=>{
+  const d=+p.day||1;
+  const c=classifyTrip(p.i);
+  const title=dn(p.i);
+  if(d===1&&c.isIslandJump&&!c.isTwilight&&!(c.isJibeiFirework&&fwD1)){
+   warns.push(`「${title}」屬跳島行程，一律禁止排在第1天（黃昏之旅或煙火施放日之吉貝花火船除外）。`);
+  }
+  if(days>1&&d===days&&c.isLastDayBanned){
+   const allowBBQ=c.isBBQ&&air()&&backM!=null&&backM>20*60+30;
+   if(!allowBBQ){
+    warns.push(`「${title}」禁止排在最後一天（第${days}天）；僅搭機且回程航班 20:30 過後，BBQ 才可排在最後一天。`);
+   }
+  }
+  if(c.isEvening){
+   (eveningByDay[d]=eveningByDay[d]||[]).push(title);
+  }
+ });
+ Object.entries(eveningByDay).forEach(([d,list])=>{
+  if(list.length>1){
+   warns.push(`第${d}天同時安排了多項晚上行程（${list.join("、")}），請留意夜間時段是否衝突。`);
+  }
+ });
+ return warns;
+}
+
+/* 房型與機車判斷（依該房選擇的民宿篩選房型） */
+const beds=r=>(+r.p.senior)+(+r.p.adult)+(+r.p.c2)+(+r.p.love)+(+r.p.love_acc);
+function innRooms(inn){
+ const m=D.price.room[inn];
+ if(!m)return ROOMS;
+ const list=ROOMS.filter(x=>x[0] in m);
+ return list.length?list:ROOMS;
+}
+function fits(r){
+ const pool=innRooms(r.inn);
+ const n=Math.max(beds(r),1);
+ let f=pool.filter(x=>x[1]>=n&&x[1]<=n+1);
+ if(!f.length)f=pool.filter(x=>x[1]>=n);
+ if(!f.length)f=[pool[pool.length-1]];
+ return f.sort((a,b)=>a[1]-b[1]||a[2]-b[2]).map(x=>x[0]);
+}
+function seats(r){
+ const ad=(+r.p.senior)+(+r.p.adult)+(+r.p.love)+(+r.p.love_acc);
+ if(ad===0)return 0;
+ const c1=+r.p.c1,c2=+r.p.c2;
+ return ad+c2+(ad+c1+c2<=(CAP[r.type]||2)?c1:0);
+}
+function judge(r){
+ if(!r.inn||!D.price.room[r.inn])r.inn=DEF_INN;
+ const f=fits(r);
+ if(r.typeAuto||!f.includes(r.type))r.type=f[0];
+ if(r.nightsAuto)r.nights=nights();
+ if(r.bikeAuto)r.bike=Math.ceil(seats(r)/2);
+}
+const left=()=>{const o=P({...S.p});S.rooms.forEach(r=>KEYS.forEach(k=>o[k]-=+r.p[k]||0));return o;};
+function newRoom(p,inn){const r={inn:inn||DEF_INN,p:P(p),type:"",nights:nights(),nightsAuto:true,bike:0,typeAuto:true,bikeAuto:true};judge(r);return r;}
+function autoRooms(){S.rooms=[];const o=P({...S.p});
+ while(sum(o)>0){const r=P();const ad=Math.min(2,(+o.senior)+(+o.adult)+(+o.love)+(+o.love_acc));let take=ad;["adult","senior","love","love_acc"].forEach(k=>{const t=Math.min(take,+o[k]);r[k]=t;o[k]-=t;take-=t;});
+  if(ad===0){KEYS.forEach(k=>{r[k]=o[k];o[k]=0;});}else{["c2","c1","c0"].forEach(k=>{const t=Math.min(+o[k],2);r[k]=t;o[k]-=t;});}
+  if((+o.senior)+(+o.adult)+(+o.love)+(+o.love_acc)===0)KEYS.forEach(k=>{r[k]+=o[k];o[k]=0;});
+  S.rooms.push(newRoom(r,DEF_INN));}}
+function syncPicked(){S.picked.forEach(p=>{if(p.auto)p.p=P({...S.p});});}
+function sortPicked(){S.picked.sort((a,b)=>(+a.day||1)-(+b.day||1));}
+
+function boatJudge(){const n=nights();if(!n)return"待判定";if(isHoli())return"連續假日";
+ const dw=new Date($("d1").value).getDay();if(n+1===3)return dw===5||dw===6?"假日":"平日";return"待判定";}
+function leg4HTML(isAir){
+ const w=isAir?"班次":"船班";
+ const max=Math.max(S.goL.length,S.backL.length);
+ let rows="";
+ for(let n=0;n<max;n++){
+  const g=S.goL[n],b=S.backL[n],sfx=max>1?(n+1):"";
+  rows+=`<div class="leg4">`+
+   (g?`${isAir?`<label>去程航班${sfx}<input data-leg="goL" data-n="${n}" data-f="c" value="${esc(g.c)}"></label>`:`<div></div>`}
+   <div class="leg-pair"><label>去程${isAir?"時間":w+"時間"}${sfx}<input type="time" data-leg="goL" data-n="${n}" data-f="t" value="${esc(g.t)}"></label>${S.goL.length>1?`<button class="x" data-legrm="goL" data-n="${n}" aria-label="移除去程">✕</button>`:""}</div>`
+   :`<div></div><div></div>`)+
+   (b?`${isAir?`<label>回程航班${sfx}<input data-leg="backL" data-n="${n}" data-f="c" value="${esc(b.c)}"></label>`:`<div></div>`}
+   <div class="leg-pair"><label>回程${isAir?"時間":w+"時間"}${sfx}<input type="time" data-leg="backL" data-n="${n}" data-f="t" value="${esc(b.t)}"></label>${S.backL.length>1?`<button class="x" data-legrm="backL" data-n="${n}" aria-label="移除回程">✕</button>`:""}</div>`
+   :`<div></div><div></div>`)+
+  `</div>`;
+ }
+ return rows+`<div class="legadd"><button data-legadd="goL">＋新增去程${isAir?"航班":w}</button><button data-legadd="backL">＋新增回程${isAir?"航班":w}</button></div>`;
+}
+function renderTrans(){
+ $("trans").innerHTML=[["air","搭機"],["budai","布袋港搭船"],["kh","高雄搭船"]].map(([k,t])=>`<button data-k="${k}" aria-pressed="${S.trans===k}">${t}</button>`).join("");
+ const ship=!air();let h="";
+ if(!ship){h=`<label>出發地<select id="city">${Object.keys(CITY_AIR).map(c=>`<option ${c===S.city?"selected":""}>${c}</option>`).join("")}</select></label>
+ <label>航空公司<select id="airl">${CITY_AIR[S.city].map(c=>`<option ${c===S.air?"selected":""}>${c}</option>`).join("")}</select></label>
+`+leg4HTML(true);}
+ else{const bj=boatJudge();if(bj!=="待判定")S.boat=bj;
+ h=(S.trans==="budai"?(bj!=="待判定"?`<label>船票類別（依日期、天數自動判斷）<input value="${bj}" readonly style="background:${bj==="平日"?"#2E7D32":bj==="假日"?"#E65100":"#B71C1C"};color:#fff;border-color:transparent"></label>`
+  :`<label>船票類別（待判定，請手動選）<select id="boat">${BOAT_TIME.map(c=>`<option ${c===S.boat?"selected":""}>${c}</option>`).join("")}</select></label>`)
+  :`<label>艙等<select id="cabin">${CABIN.map(c=>`<option ${c===S.cabin?"selected":""}>${c}</option>`).join("")}</select></label>`)+
+ leg4HTML(false);}
+ $("transf").innerHTML=h;
+ const al=$("airl");if(al){const c=AIRCOL[S.air]||["#455A64"];al.style.cssText=`background:${c[0]};color:#fff;border-color:${c[0]}`;}
+}
+function cntHTML(k,label,v,attr){return`<div class="cnt"><span class="ck" style="background:${KCOL[k]}">${label}</span><div class="cv" style="background:${KLT[k]}"><button ${attr} data-d="-1" data-k="${k}" aria-label="減少">−</button><b>${v}</b><button ${attr} data-d="1" data-k="${k}" aria-label="增加">＋</button></div></div>`;}
+function renderPpl(){const L=LAB();$("ppl").innerHTML=KEYS.map(k=>cntHTML(k,L[k],S.p[k],"")).join("");$("pplhint").textContent=`共 ${total()} 位`;}
+function renderRooms(){
+ const L=LAB(),n=nights();
+ const roomTot=S.rooms.reduce((s,r)=>s+sum(r.p),0);
+ const mainTot=total();
+ const distinctInns=[...new Set(S.rooms.map(r=>r.inn).filter(Boolean))];
+ $("rooms").innerHTML=S.rooms.map((r,i)=>{
+  const f=fits(r),hc=RMC[i%RMC.length],rSum=sum(r.p);
+  return`<div class="room"><div class="rh" style="background:${hc[0]}"><span>房間 ${i+1}・${esc(r.inn)}民宿・${esc(r.type)}（入住 ${rSum} 位 / ${r.nights} 晚）・${isHoli()?"連續假日":"平日"}</span><button class="x" data-x="${i}" aria-label="移除房間">✕</button></div>
+ <div class="rb" style="background:${hc[1]}">
+ <div class="rs">
+  <label>民宿<select data-i="${i}" data-f="inn">${INNS.map(x=>`<option ${x===r.inn?"selected":""}>${esc(x)}</option>`).join("")}</select></label>
+  <label>房型（依入住人數篩選）<select data-i="${i}" data-f="type">${f.map(t=>`<option ${t===r.type?"selected":""}>${t}</option>`).join("")}</select></label>
+  <label>住幾晚${r.nightsAuto?"":"（手動）"}<input type="number" min="1" value="${r.nights}" data-i="${i}" data-f="nights"></label>
+  <label>機車台數${r.bikeAuto?"（自動判斷）":"（手動）"}<input type="number" min="0" value="${r.bike}" data-i="${i}" data-f="bike"></label>
+  ${r.bikeAuto?"":`<button data-auto="${i}">改回自動判斷</button>`}
+ </div>
+ <div class="rp">${KEYS.map(k=>cntHTML(k,L[k],r.p[k],`data-i="${i}"`)).join("")}</div>
+ </div></div>`;
+ }).join("")||`<p class="empty">尚未新增房間</p>`;
+
+ const o=left(),lt=KEYS.filter(k=>o[k]).map(k=>L[k]+(o[k]>0?"尚未分配 ":"多分配 ")+Math.abs(o[k])+"位");
+ const bk=S.rooms.reduce((s,r)=>s+(+r.bike||0),0);
+ const innInfo=distinctInns.length>1?`（分住 ${distinctInns.length} 間不同民宿：${distinctInns.join("、")}）`:"";
+ const matchTxt=roomTot===mainTot?`入住總人數 ${roomTot} 位（與上方總人數 ${mainTot} 位相符）`:`⚠️ 入住總人數 ${roomTot} 位，須等於上方總人數 ${mainTot} 位`;
+ $("roomhint").textContent=`${S.rooms.length} 間房${innInfo}、${n} 晚、機車共 ${bk} 台（${n+1} 天）｜${matchTxt}`+(lt.length?"｜"+lt.join("、"):"。");
+ $("roomhint").className=(roomTot!==mainTot||lt.length)?"statbar err":"statbar";
+}
+function renderCats(){
+ const off=isOffSeason();
+ const visibleCats=off?CATS.filter(c=>c!=="玩水行程"):CATS;
+ if(off&&S.cat==="玩水行程")S.cat="全部";
+ $("cats").innerHTML=visibleCats.map(c=>{const cc=CATCOL[c],on=S.cat===c;return`<button data-c="${c}" style="${on?`background:${cc};color:#fff;border-color:${cc}`:`border-color:${cc};color:#212121;box-shadow:inset 5px 0 0 ${cc}`}">${c}</button>`}).join("");
+}
+function optLabel(i){const t=TRIPS[i];return(t[2]||"業者未填")+"・"+dn(i)+(t[4]?"（"+t[4]+"）":"");}
+function renderTrips(){
+ applyPreferredVendors();
+ const off=isOffSeason();
+ const q=S.q.trim();
+ const gs=GROUPS.filter(g=>!isHiddenInOffSeason(g)&&(S.cat==="全部"||g.rows.some(i=>TRIPS[i][0]===S.cat))&&matchTripSearch(g,q));
+ $("trips").innerHTML=gs.map(g=>{const gi=GROUPS.indexOf(g),sel=g.sel??g.def,c=COL[sel],ct=TRIPS[sel][0];
+  return`<div class="tg" style="background:${c.lt};box-shadow:inset 6px 0 0 ${CATCOL[ct]}"><span class="tag" style="background:${CATCOL[TRIPS[sel][0]]}">${esc(TRIPS[sel][0])}</span><span class="gn">${esc(g.name)}</span>
+  <select data-g="${gi}" style="background:${c.dk};color:#fff;border-color:${c.dk}" aria-label="業者與行程">${g.rows.map(i=>`<option value="${i}" ${i===sel?"selected":""}>${esc(optLabel(i))}</option>`).join("")}</select>
+  <button data-add="${gi}">加入</button></div>`;}).join("")||`<p class="empty" style="padding:12px">找不到符合的行程</p>`;
+ $("offseason_hint").textContent=off?"※ 目前出發日落於 10/11 - 03/31 期間，已自動遮蔽水上活動、浮潛及北海相關行程（海洋牧場預設星光海洋牧場）。":"";
+ const days=Math.max(nights()+1,1),L=LAB();
+ $("picked").innerHTML=S.picked.map((p,j)=>{const g=GROUPS[p.g],c=COL[p.i],ct=TRIPS[p.i][0],cls=classifyTrip(p.i);
+  const slotTag=cls.isEvening?`<span class="tag-slot">晚上行程</span>`:cls.isFullDay7to17?`<span class="tag-slot">07:00-17:00</span>`:cls.isSouthTwo?`<span class="tag-slot">07:00-15:30</span>`:"";
+  return`<div class="pk" style="background:${c.lt};box-shadow:inset 6px 0 0 ${CATCOL[ct]}">
+ <div class="pt"><span class="pn">${esc(dn(p.i))}${slotTag}</span><select data-j="${j}" data-f="i" style="background:${c.dk};color:#fff;border-color:${c.dk}" aria-label="更換業者">${g.rows.map(i=>`<option value="${i}" ${i===p.i?"selected":""}>${esc(optLabel(i))}</option>`).join("")}</select>
+ <select data-j="${j}" data-f="day" aria-label="第幾天">${Array.from({length:days},(_,d)=>`<option value="${d+1}" ${p.day==d+1?"selected":""}>第${d+1}天</option>`).join("")}</select><button class="x" data-rm="${j}" aria-label="移除">✕</button></div>
+ <div class="rp">${KEYS.filter(k=>+S.p[k]).map(k=>cntHTML(k,L[k],p.p[k],`data-j="${j}"`)).join("")}</div>${p.auto?"":`<p class="hint" style="margin:4px 0 0">人別人數已手動調整</p>`}</div>`;}).join("")||`<p class="empty">尚未加入任何行程，請從上方「5 選擇行程」點擊加入。</p>`;
+ const warns=validateSchedule();
+ $("schedwarn").innerHTML=warns.length?`<div class="warnbox">${warns.map(w=>`<div>⚠️ ${esc(w)}</div>`).join("")}</div>`:"";
+}
+function code(){const tr=air()?S.city.slice(-1)+"機":S.trans==="budai"?"布船":"高船";
+ const v=$("ver").value.trim();
+ return `${v?`[${v}]`:""}${md($("d1").value)}-${md($("d2").value)} ${$("cname").value||"代表人"} ${total()}人 ${tr}`;}
+const port=()=>air()?S.city:S.trans==="budai"?"布袋港":"高雄";
+function legLines(code){const w=air()?"班次":"船班",f=x=>(code&&air()&&x.c?x.c+" ":"")+x.t+w;
+ const ok=x=>x.t||x.c;return[...S.goL.filter(ok).map(x=>`${ymd($("d1").value)} ${port()}>澎湖 ${f(x)}`),...S.backL.filter(ok).map(x=>`${ymd($("d2").value)} 澎湖>${port()} ${f(x)}`)];}
+function flights(){return legLines(true).join("\n");}
+/* 價格參數（目前表上已有的售價；空白的顯示「—」） */
+const PRICE=D.price;
+const fmt=v=>v==null?"—":Math.round(v).toLocaleString("en-US");
+function airP(k){const a=air()?PRICE.air[S.city]:S.trans==="budai"?PRICE.boat[S.boat]:PRICE.cabin[S.cabin];if(!a)return null;
+ if(k==="adult"||k==="love"||k==="love_acc")return a.adult;
+ if(k==="senior")return a.senior;
+ if(k==="c0")return a.c0;
+ return a.c;}
+function roomP(r){const t=(PRICE.room[r.inn]||{})[r.type];if(!t)return null;return t[isHoli()?1:0];}
+function tripP(i,k){const t=TRIPS[i][5];if(!t)return null;const m={adult:t[0],senior:t[0],love:t[0],love_acc:t[0],c0:t[1],c1:t[2],c2:t[3]};return m[k]??null;}
+const add=(a,b)=>a==null||b==null?null:a+b;
+const isTotalMode=()=>$("bikemode").value!=="room";
+const discV=()=>($("oldc").checked?(PRICE.old??0):0)+($("early").checked?(PRICE.early??0):0);
+function calc(){const n=nights(),days=n+1,miss=new Set();
+ const adultsAll=S.rooms.reduce((s,r)=>s+(+r.p.adult)+(+r.p.senior)+(+r.p.love)+(+r.p.love_acc),0);
+ const totalBikes=S.rooms.reduce((s,r)=>s+(+r.bike||0),0);
+ const per=S.rooms.map(r=>{const o={};const rp=roomP(r);if(rp==null)miss.add(`${r.inn}民宿 ${r.type}房價`);
+  const rn=+r.nights||0;
+  const payers=(+r.p.senior)+(+r.p.adult)+(+r.p.c2)+(+r.p.love)+(+r.p.love_acc);const sts=seats(r);
+  KEYS.forEach(k=>{if(!+r.p[k])return;let v=airP(k);if(v==null)miss.add(air()?"機票（"+LAB()[k]+"）":"船票");
+   const isAdultLike=(k==="adult"||k==="senior"||k==="love"||k==="love_acc");
+   if(isAdultLike||k==="c2")v=add(v,rp==null?null:rp*rn/payers);else if(k==="c1")v=add(v,PRICE.clean);
+   const counted=isAdultLike||k==="c2"||(k==="c1"&&sts>payers);
+   if(isTotalMode()){if(isAdultLike)v=add(v,adultsAll?PRICE.bike*totalBikes*days/adultsAll:0);}
+   else if(counted&&k!=="c0")v=add(v,sts?PRICE.bike*(+r.bike)*days/sts:0);
+   S.picked.forEach(p=>{if(+p.p[k]){const tp=tripP(p.i,k);if(tp==null)miss.add(dn(p.i)+"價格");v=add(v,tp??null);}});
+   o[k]=v;o[k+"d"]=(isAdultLike||k==="c2")&&v!=null?v+discV():v;});
+  return o;});
+ return{per,miss};}
+function renderOut(){
+ sortPicked();
+ renderTrips();
+ $("code").textContent=code();$("fl").textContent=flights();
+ const n=nights(),days=n+1,L=LAB(),{per,miss}=calc();
+ const activeKeys=KEYS.filter(k=>+S.p[k]>0);
+ const tot=(a,b)=>a==null||b==null?null:a*b;
+ const AD=(+S.p.adult)+(+S.p.senior)+(+S.p.love)+(+S.p.love_acc);
+ const adultsAll=S.rooms.reduce((s,r)=>s+(+r.p.adult)+(+r.p.senior)+(+r.p.love)+(+r.p.love_acc),0);
+ const totalBikes=S.rooms.reduce((s,r)=>s+(+r.bike||0),0);
+
+ /* ====== 1. 每位估價明細表（依總人數人別與房型拆算） ====== */
+ const estRows=[];
+ if(air()){const ac=AIRCOL[S.air]||["#455A64","#ECEFF1"];
+  activeKeys.forEach(k=>{const p=airP(k);
+   const v={};v[k]=p;
+   const lbl=k==="c0"?`${L[k]}保險費`:`${L[k]}機票`;
+   estRows.push({name:lbl,dk:ac[0],bg:ac[1],v,missFlag:p==null});
+  });
+ }else{
+  const v={};activeKeys.forEach(k=>v[k]=airP(k));
+  estRows.push({name:S.trans==="budai"?`船票（布袋港・${S.boat}）`:`船票（高雄・${S.cabin}）`,v,missFlag:activeKeys.some(k=>v[k]==null)});
+ }
+ S.rooms.forEach((r,i)=>{
+  const rc=RMC[i%RMC.length],rp=roomP(r),rn=+r.nights||0;
+  const payers=(+r.p.senior)+(+r.p.adult)+(+r.p.c2)+(+r.p.love)+(+r.p.love_acc);
+  const v={};
+  activeKeys.forEach(k=>{
+   if(!+r.p[k])return;
+   if(k==="adult"||k==="senior"||k==="love"||k==="love_acc"||k==="c2"){
+    v[k]=rp!=null&&payers?rp*rn/payers:null;
+   }
+  });
+  estRows.push({name:`房間${i+1} ${r.inn}民宿 ${r.type} 入住${roomStayLabel(r.p)}`,dk:rc[0],bg:rc[1],v,missFlag:rp==null});
+  if(+r.p.c1){
+   const cv={c1:PRICE.clean};
+   estRows.push({name:`房間${i+1} 住宿清潔費（2-5歲同住）`,dk:rc[0],bg:rc[1],v:cv,missFlag:PRICE.clean==null});
+  }
+ });
+ {
+  const v={};
+  activeKeys.forEach(k=>{
+   const isAdultLike=(k==="adult"||k==="senior"||k==="love"||k==="love_acc");
+   if(isTotalMode()){
+    if(isAdultLike)v[k]=PRICE.bike!=null&&adultsAll?PRICE.bike*totalBikes*days/adultsAll:null;
+   }else{
+    const roomWithK=S.rooms.filter(r=>+r.p[k]>0);
+    if(roomWithK.length){
+     let sumUnit=0,cnt=0,ok=true;
+     roomWithK.forEach(r=>{
+      const sts=seats(r),payers=(+r.p.senior)+(+r.p.adult)+(+r.p.c2)+(+r.p.love)+(+r.p.love_acc);
+      const counted=isAdultLike||k==="c2"||(k==="c1"&&sts>payers);
+      if(counted&&k!=="c0"){
+       if(PRICE.bike==null){ok=false;return;}
+       sumUnit+=(sts?PRICE.bike*(+r.bike)*days/sts:0)*(+r.p[k]);
+       cnt+=(+r.p[k]);
+      }
+     });
+     if(cnt>0)v[k]=ok?sumUnit/cnt:null;
+    }
+   }
+  });
+  estRows.push({name:"普通重型機車",dk:"#37474F",bg:"#CFD8DC",v,missFlag:PRICE.bike==null});
+ }
+ S.picked.forEach(p=>{
+  const t=TRIPS[p.i],v={};let hasMiss=false;
+  activeKeys.forEach(k=>{if(+p.p[k]){const tp=tripP(p.i,k);v[k]=tp;if(tp==null)hasMiss=true;}});
+  estRows.push({name:`${dn(p.i)}（${t[2]||"業者未填"}・第${p.day}天）`,dk:CATCOL[t[0]],bg:COL[p.i].lt,v,missFlag:hasMiss});
+ });
+ if($("oldc").checked){
+  const v={};activeKeys.forEach(k=>{if(k==="adult"||k==="senior"||k==="love"||k==="love_acc"||k==="c2")v[k]=PRICE.old;});
+  estRows.push({name:"老顧客優惠",v,missFlag:PRICE.old==null});
+ }
+ if($("early").checked){
+  const v={};activeKeys.forEach(k=>{if(k==="adult"||k==="senior"||k==="love"||k==="love_acc"||k==="c2")v[k]=PRICE.early;});
+  estRows.push({name:"早鳥優惠",v,missFlag:PRICE.early==null});
+ }
+ const hasDisc=$("oldc").checked||$("early").checked;
+ const roomSumRows=S.rooms.map((r,i)=>{
+  const lbl=S.rooms.length>1?`總計（房間${i+1}・${r.inn} ${r.type}）`:"總計（每位合計）";
+  const v={};
+  activeKeys.forEach(k=>{
+   if(!+r.p[k])return;
+   const val=hasDisc?per[i][k+"d"]:per[i][k];
+   v[k]=val;
+  });
+  return{name:lbl,v,sum:true};
+ });
+ $("ctab").innerHTML=`<thead><tr><th>項目</th>${activeKeys.map(k=>`<th class="n" style="background:${KCOL[k]}">${L[k]}每位</th>`).join("")}</tr></thead><tbody>`+
+  estRows.map(r=>`<tr${r.bg?` style="background:${r.bg};color:#212121"`:""}><td${r.dk?` style="background:${r.dk};color:#fff"`:""}>${esc(r.name)}</td>${activeKeys.map(k=>{
+   const val=r.v[k];
+   return`<td class="n">${val!==undefined?fmt(val):""}</td>`;
+  }).join("")}</tr>`).join("")+
+  roomSumRows.map(r=>`<tr class="sum"><td>${esc(r.name)}</td>${activeKeys.map(k=>{
+   const val=r.v[k];
+   return`<td class="n">${val!==undefined?fmt(val):""}</td>`;
+  }).join("")}</tr>`).join("")+`</tbody>`;
+
+ /* ====== 2. 每間房間費用明細表 ====== */
+ const roomCostRows=[];
+ let allRoomsTotal=0,allRoomsAny=false;
+ S.rooms.forEach((r,i)=>{
+  const rc=RMC[i%RMC.length],rp=roomP(r),rn=+r.nights||0,rAmt=tot(rp,rn);
+  const stayTxt=roomStayLabel(r.p);
+  roomCostRows.push({name:`房間${i+1} ${r.inn}民宿 ${r.type}${stayTxt?` 入住${stayTxt}`:""}`,calc:`${fmt(rp)} × ${rn} 晚 × 1 間`,amt:fmt(rAmt),raw:rAmt,dk:rc[0],bg:rc[1]});
+  let subAmt=rAmt||0,subAny=rAmt!=null;
+  const parts=[`房費 ${fmt(rAmt)}`];
+  if(+r.p.c1){
+   const cAmt=PRICE.clean!=null?PRICE.clean*r.p.c1:null;
+   roomCostRows.push({name:`房間${i+1} 住宿清潔費`,calc:`${fmt(PRICE.clean)} × ${r.p.c1} 位（未滿6歲同住）`,amt:fmt(cAmt),raw:cAmt,dk:rc[0],bg:rc[1]});
+   if(cAmt!=null){subAmt+=cAmt;subAny=true;}
+   parts.push(`清潔費 ${fmt(cAmt)}`);
+  }
+  if(!isTotalMode()){
+   const bAmt=PRICE.bike!=null?PRICE.bike*(+r.bike||0)*days:null;
+   roomCostRows.push({name:`房間${i+1} 普通重型機車`,calc:`${fmt(PRICE.bike)} × ${r.bike} 台 × ${days} 天`,amt:fmt(bAmt),raw:bAmt,dk:"#37474F",bg:"#CFD8DC"});
+   if(bAmt!=null){subAmt+=bAmt;subAny=true;}
+   parts.push(`機車 ${fmt(bAmt)}`);
+  }
+  const subFinal=subAny?subAmt:null;
+  if(subFinal!=null){allRoomsTotal+=subFinal;allRoomsAny=true;}
+  roomCostRows.push({name:`房間${i+1} 費用小計`,calc:parts.join("＋"),amt:fmt(subFinal),subsum:true});
+ });
+ if(S.rooms.length){
+  const sumCalc=S.rooms.map((_,i)=>`房間${i+1}小計`).join("＋");
+  roomCostRows.push({name:"全部房間費用合計",calc:sumCalc,amt:fmt(allRoomsAny?allRoomsTotal:null),sum:true});
+ }
+ $("ctab_room").innerHTML=`<thead><tr><th>房間項目</th><th>計算</th><th class="n" style="background:#880E4F">金額</th></tr></thead><tbody>`+
+  (roomCostRows.length?roomCostRows.map(r=>`<tr class="${r.sum?"sum":r.subsum?"subsum":""}"${r.bg?` style="background:${r.bg};color:#212121"`:""}><td${r.dk?` style="background:${r.dk};color:#fff"`:""}>${esc(r.name)}</td><td>${esc(r.calc)}</td><td class="n">${esc(r.amt)}</td></tr>`).join("")
+  :`<tr><td colspan="3" class="empty" style="text-align:center">尚未新增房間</td></tr>`)+`</tbody>`;
+
+ /* ====== 3. 總費用計算與金額對照表 ====== */
+ const calcRows=[];
+ if(air()){const ac=AIRCOL[S.air]||["#455A64","#ECEFF1"];
+  activeKeys.forEach(k=>{const p=airP(k),a=tot(p,+S.p[k]);
+   if(k==="c0")calcRows.push({name:`${L[k]}保險費`,calc:`${fmt(p)} × ${S.p[k]} 位（已含保險票、活動保險費）`,amt:fmt(a),raw:a,dk:ac[0],bg:ac[1]});
+   else calcRows.push({name:`${L[k]}機票`,calc:`${fmt(p)} × ${S.p[k]} 位`,amt:fmt(a),raw:a,dk:ac[0],bg:ac[1]});
+  });
+ }else{
+  calcRows.push({name:S.trans==="budai"?`船票（布袋港・${S.boat}）`:`船票（高雄・${S.cabin}）`,calc:pplShort(S.p),amt:"—",raw:null});
+ }
+ S.rooms.forEach((r,i)=>{
+  const rc=RMC[i%RMC.length],rp=roomP(r),rn=+r.nights||0,amt=tot(rp,rn);
+  const stayTxt=roomStayLabel(r.p);
+  calcRows.push({name:`房間${i+1} ${r.inn}民宿 ${r.type}${stayTxt?` 入住${stayTxt}`:""}`,calc:`${fmt(rp)} × ${rn} 晚 × 1 間`,amt:fmt(amt),raw:amt,dk:rc[0],bg:rc[1]});
+  if(+r.p.c1){const cAmt=PRICE.clean!=null?PRICE.clean*r.p.c1:null;calcRows.push({name:`房間${i+1} 住宿清潔費`,calc:`${fmt(PRICE.clean)} × ${r.p.c1} 位（未滿6歲同住）`,amt:fmt(cAmt),raw:cAmt,dk:rc[0],bg:rc[1]});}
+ });
+ {const tb=S.rooms.reduce((s,r)=>s+(+r.bike||0),0),amt=PRICE.bike!=null?PRICE.bike*tb*days:null;
+  calcRows.push({name:"普通重型機車",calc:`${fmt(PRICE.bike)} × ${tb} 台 × ${days} 天`,amt:fmt(amt),raw:amt,dk:"#37474F",bg:"#CFD8DC"});}
+ S.picked.forEach(p=>{const t=TRIPS[p.i];let amt=0,hasNull=false;KEYS.forEach(k=>{if(+p.p[k]){const tp=tripP(p.i,k);if(tp==null)hasNull=true;else amt+=tp*(+p.p[k]);}});
+  const finalAmt=hasNull?null:amt;
+  calcRows.push({name:`${dn(p.i)}（${t[2]||"業者未填"}）`,calc:KEYS.filter(k=>+p.p[k]).map(k=>`${fmt(tripP(p.i,k))} × ${p.p[k]} 位`).join("＋")+`・第${p.day}天`,amt:fmt(finalAmt),raw:finalAmt,dk:CATCOL[t[0]],bg:COL[p.i].lt});
+ });
+ if(+$("ins").value){const iAmt=PRICE.ins!=null?PRICE.ins*(+$("ins").value):null;calcRows.push({name:"單購保險",calc:`${fmt(PRICE.ins)} × ${$("ins").value} 位`,amt:fmt(iAmt),raw:iAmt});}
+ const el=AD+(+S.p.c2);
+ if($("oldc").checked){const oAmt=tot(PRICE.old,el);calcRows.push({name:"老顧客優惠",calc:`${fmt(PRICE.old)} × ${el} 位`,amt:fmt(oAmt),raw:oAmt});}
+ if($("early").checked){const eAmt=tot(PRICE.early,el);calcRows.push({name:"早鳥優惠",calc:`${fmt(PRICE.early)} × ${el} 位`,amt:fmt(eAmt),raw:eAmt});}
+
+ let amtSum=0,amtAny=false;
+ calcRows.forEach(r=>{if(r.raw!=null){amtSum+=r.raw;amtAny=true;}});
+ calcRows.push({name:"總計",calc:miss.size?"（已加總已知項目）":"",amt:fmt(amtAny?amtSum:null),sum:true});
+
+ $("ctab_calc").innerHTML=`<thead><tr><th>項目</th><th>計算</th><th class="n" style="background:#880E4F">金額</th></tr></thead><tbody>`+
+  calcRows.map(r=>`<tr class="${r.sum?"sum":""}"${r.bg?` style="background:${r.bg};color:#212121"`:""}><td${r.dk?` style="background:${r.dk};color:#fff"`:""}>${esc(r.name)}</td><td>${esc(r.calc)}</td><td class="n">${esc(r.amt)}</td></tr>`).join("")+`</tbody>`;
+
+ $("miss_hint").textContent=miss.size?`⚠️ 尚缺價格（未計入上方總計）：${[...miss].join("、")}`:"";
+
+ /* ====== 給客人看的報價文字 ====== */
+ const CN=["零","一","二","三","四","五","六","七","八","九","十"],cn=x=>CN[x]||String(x),cq=x=>+x===2?"兩":cn(+x);
+ const AIRPORT={台北:"台北松山",台中:"台中清泉崗",嘉義:"嘉義",台南:"台南",高雄:"高雄小港"};
+ const from=air()?AIRPORT[S.city]:S.trans==="budai"?"布袋港":"高雄港";
+ const tagT=air()?S.city+"搭機":S.trans==="budai"?"布袋港搭船":"高雄搭船";
+ const kidsAll=kidsN(S.p);
+ const ppl=[`成人${S.p.adult}位`];if(+S.p.senior)ppl.push(`敬老${S.p.senior}位`);if(+S.p.love)ppl.push(`愛心${S.p.love}位`);if(+S.p.love_acc)ppl.push(`愛陪${S.p.love_acc}位`);if(kidsAll)ppl.push(`小孩${kidsAll}位`);
+ const innMap={};
+ S.rooms.forEach(r=>{
+  const key=`${r.inn}|${r.nights}`;
+  innMap[key]=innMap[key]||{inn:r.inn,nights:r.nights,types:{}};
+  innMap[key].types[r.type]=(innMap[key].types[r.type]||0)+1;
+ });
+ const stayDesc=Object.values(innMap).map(g=>`${g.inn}民宿-${Object.keys(g.types).map(t=>t+cq(g.types[t])+"間").join("、")}${g.nights}晚`).join("、");
+ const bikes=S.rooms.reduce((s,r)=>s+(+r.bike||0),0);
+ const hasAq=S.picked.some(p=>TRIPS[p.i][3].includes("水族館"));
+ const note=i=>{const x=TRIPS[i][4];return x&&!x.includes("\n")?"("+x.replace(/；/g,"、")+")":"";};
+ const inc=[`代訂購${from}到澎湖-來回程${air()?"機票":"船票"}x${total()}位`,
+  `入住愛玩咖搭配民宿-${stayDesc||"尚未設定"}(不含餐食)`,
+  `搭配租賃澎湖本島普通重型機車x${bikes}台${n+1}天(兩人乙部、不含油資)`,
+  ...S.picked.map((p,j)=>`行程${cn(j+1)}:${dn(p.i)}${note(p.i)}`)];
+ const disc=[];if($("oldc").checked)disc.push("老顧客優惠");if($("early").checked)disc.push("早鳥優惠");
+ const dlab=disc.length===2?"雙重優惠(老顧客+早鳥)後":disc.length?disc[0]+"後":"";
+ const dl=$("dl").value?ymd($("dl").value):"＿＿";
+ const AGE={adult:"成人(12-64歲)",c1:air()?"兒童(2-5歲)":"兒童(3-5歲)",c2:"兒童(6-11歲)",senior:"敬老(滿65歲)",c0:air()?"嬰兒(未滿2歲)":"嬰兒(未滿3歲)",love:"愛心",love_acc:"愛陪"};
+ const distinctInns=[...new Set(S.rooms.map(r=>r.inn))];
+ const roomDesc=r=>{const s=sum(r.p),parts=[];
+  if(+r.p.adult)parts.push(cq(r.p.adult)+"位成人");if(+r.p.senior)parts.push(cq(r.p.senior)+"位敬老");
+  if(+r.p.love)parts.push(cq(r.p.love)+"位愛心");if(+r.p.love_acc)parts.push(cq(r.p.love_acc)+"位愛陪");
+  if(+r.p.c0)parts.push(cq(r.p.c0)+"位嬰兒");if(+r.p.c1+(+r.p.c2))parts.push(cq(+r.p.c1+(+r.p.c2))+"位兒童");
+  const innPrefix=distinctInns.length>1?`${r.inn}民宿 `:"";
+  return (s===1?"單人":cq(s)+"人")+"入住"+innPrefix+r.type+(parts.length>1||!+r.p.adult?"("+parts.join("+")+")":"");};
+ const pv=v=>v==null?"＿＿":Math.round(v);
+ const roomTxt=S.rooms.map((r,i)=>[`${tagT}※${roomDesc(r)}※${isTotalMode()?"兩人乙部機車":"搭配"+cq(r.bike)+"台機車"}`,
+  ...KEYS.filter(k=>+r.p[k]).map(k=>k==="c0"?`${AGE[k]}◎每位：${pv(per[i].c0)}元/位(不含車位、不含床位${hasAq?"、不含水族館優惠門票":""})`
+   :`${AGE[k]}◎每位：${pv(per[i][k])}元/位${dlab&&k!=="c1"?`>${dlab}${AGE[k].replace(/\(.*\)/,"")}每位：${pv(per[i][k+"d"])}元/位`:""}`)].join("\n")).join("\n\n");
+ const yr=$("d1").value?new Date($("d1").value).getFullYear():"＿＿";
+ const lines=v=>v.split("\n").map(s=>s.trim()).filter(Boolean);
+ const txt=[`${$("cname").value||"＿＿"} 您好`,`人數：${total()}人(${ppl.join("、")})`,"",
+  ...legLines(false),"",
+  "***************************************","※搭配愛玩咖-客製化優惠報價※","","報價包含項目：",...inc.map((x,i)=>`${i+1}.${x}`),"----","",
+  "報價贈送項目",...lines($("gift").value).map((x,i)=>`${i+1}.${x}`),"","","報價： ","------初步報價-------","",
+  ...(disc.length?["**********************",`於 ${dl} 前完成預定與支付訂金作業，可享以下優惠~ `,
+   ...disc.map((d,i)=>`優惠${cn(i+1)}(${d})：成人初步報價每位${d==="老顧客優惠"?PRICE.old??"＿＿":PRICE.early??"＿＿"}元/位`),"**********************",""]:[]),
+  roomTxt,"","需注意事項：",lines($("memo").value).map((x,i)=>`${i+1}.${x.replace("{年}",yr)}`).join("\n\n"),"","**********************"].join("\n");
+ $("ctext").textContent=txt;
+ {const hd=holiday(),pk=isPeakSeason(),off=isOffSeason();
+  $("dayhint").innerHTML=n?`共 ${n+1} 天 ${n} 夜・`+(hd?`<span style="background:#B71C1C;color:#fff;padding:2px 8px;border-radius:6px">連續假期：${esc(hd[0])}（${esc(hd[1])}-${esc(hd[2])}）</span>`:`<span style="background:#2E7D32;color:#fff;padding:2px 8px;border-radius:6px">非連續假期</span>`)
+   +(pk?` <span style="background:#00695C;color:#fff;padding:2px 8px;border-radius:6px">旺季(04/01-10/10)優先業者已套用</span>`:"")
+   +(off?` <span style="background:#455A64;color:#fff;padding:2px 8px;border-radius:6px">淡季(10/11-03/31)星光海洋牧場預設／玩水浮潛北海已遮蔽</span>`:"")
+   :"請填出發日與回程日";}
+}
+function all(){renderTrans();renderPpl();renderRooms();renderCats();renderTrips();renderOut();}
+const reAll=()=>{S.rooms.forEach(judge);renderPpl();renderRooms();renderTrips();renderOut();};
+
+$("trans").onclick=e=>{const k=e.target.dataset.k;if(k){S.trans=k;all();}};
+$("transf").onclick=e=>{const d=e.target.dataset;if(d.legadd){S[d.legadd].push({c:"",t:""});renderTrans();renderOut();}else if(d.legrm){S[d.legrm].splice(+d.n,1);renderTrans();renderOut();}};
+$("transf").oninput=e=>{const id=e.target.id;if(id==="city"){S.city=e.target.value;S.air=CITY_AIR[S.city][0];renderTrans();}else if(id==="airl"){S.air=e.target.value;renderTrans();}else if(e.target.dataset.leg){const L=S[e.target.dataset.leg][+e.target.dataset.n];L[e.target.dataset.f]=e.target.value;if(e.target.dataset.f==="c"){const c=e.target.value.trim().toUpperCase();const a=c.startsWith("AE")?"華信航空":c.startsWith("B7")?"立榮航空":"";if(a&&a!==S.air&&CITY_AIR[S.city].includes(a)){S.air=a;renderTrans();}}}else if(id){S[id]=e.target.value;}renderOut();};
+$("ppl").onclick=e=>{const k=e.target.dataset.k;if(!k)return;S.p[k]=Math.max(0,S.p[k]+(+e.target.dataset.d));autoRooms();syncPicked();reAll();};
+$("rooms").onclick=e=>{const d=e.target.dataset;
+ if(d.x!=null){S.rooms.splice(d.x,1);reAll();return;}
+ if(d.auto!=null){S.rooms[d.auto].bikeAuto=true;reAll();return;}
+ if(d.k&&d.i!=null){
+  const r=S.rooms[d.i];
+  const delta=+d.d;
+  if(delta>0){
+   const roomTot=S.rooms.reduce((s,rm)=>s+sum(rm.p),0);
+   if(roomTot>=total()){toast("入住總人數不可超過上方總人數");return;}
+  }
+  r.p[d.k]=Math.max(0,(+r.p[d.k]||0)+delta);
+  judge(r);reAll();
+ }};
+$("rooms").addEventListener("change",e=>{const{i,f}=e.target.dataset;if(i==null)return;const r=S.rooms[i];
+ if(f==="inn"){r.inn=e.target.value;r.typeAuto=true;judge(r);}
+ else if(f==="type"){r.type=e.target.value;r.typeAuto=false;judge(r);}
+ else if(f==="nights"){r.nights=Math.max(1,+e.target.value||1);r.nightsAuto=false;}
+ else if(f==="bike"){r.bike=Math.max(0,+e.target.value||0);r.bikeAuto=false;}
+ reAll();
+});
+$("addroom").onclick=()=>{
+ const roomTot=S.rooms.reduce((s,rm)=>s+sum(rm.p),0);
+ if(roomTot>=total()){toast("入住總人數已達上方總人數上限");return;}
+ const o=left();KEYS.forEach(k=>o[k]=Math.max(0,o[k]));
+ S.rooms.push(newRoom(sum(o)?o:P(),DEF_INN));reAll();
+};
+$("cats").onclick=e=>{const c=e.target.dataset.c;if(c){S.cat=c;renderCats();renderTrips();}};
+$("q").oninput=e=>{S.q=e.target.value;renderTrips();};
+$("trips").addEventListener("change",e=>{const g=e.target.dataset.g;if(g!=null){GROUPS[g].sel=+e.target.value;GROUPS[g].manualSel=true;renderTrips();}});
+$("trips").onclick=e=>{
+ const a=e.target.dataset.add;
+ if(a==null)return;
+ const g=GROUPS[a],i=g.sel??g.def;
+ const defDay=suggestDefaultDay(i);
+ S.picked.push({g:+a,i,day:defDay,p:P({...S.p}),auto:true});
+ renderOut();
+ toast(`已加入：${dn(i)}（預設排第${defDay}天）`);
+};
+$("picked").addEventListener("change",e=>{
+ const{j,f}=e.target.dataset;
+ if(j==null||!f)return;
+ const val=+e.target.value;
+ if(f==="day"){
+  const days=Math.max(nights()+1,1);
+  const fwD1=$("firework_d1")&&$("firework_d1").checked;
+  const backM=getBackFlightMins();
+  const c=classifyTrip(S.picked[j].i);
+  if(val===1&&c.isIslandJump&&!c.isTwilight&&!(c.isJibeiFirework&&fwD1)){
+   toast("⚠️ 跳島行程一律禁止排在第1天");
+  }else if(days>1&&val===days&&c.isLastDayBanned&&!(c.isBBQ&&air()&&backM!=null&&backM>20*60+30)){
+   toast("⚠️ 此晚間行程禁止排在最後一天");
+  }
+ }
+ S.picked[j][f]=val;
+ renderOut();
+});
+$("picked").onclick=e=>{const d=e.target.dataset;if(d.rm!=null){S.picked.splice(d.rm,1);renderOut();return;}
+ if(d.k&&d.j!=null){const p=S.picked[d.j];p.p[d.k]=Math.max(0,(+p.p[d.k]||0)+(+d.d));p.auto=false;renderOut();}};
+for(const id of["cname","d1","d2","ver","oldc","early","firework_d1","bikemode","ins","gift","memo","dl"])$(id).addEventListener("input",()=>{if(["d1","d2"].includes(id)){renderTrans();renderRooms();renderCats();renderTrips();}renderOut();});
+document.querySelector(".tk-tabs").onclick=e=>{const t=e.target.dataset.t;if(!t)return;for(const b of e.currentTarget.children)b.setAttribute("aria-selected",b.dataset.t===t);$("pcost").hidden=t!=="cost";$("pcust").hidden=t!=="cust";};
+function toast(m){const t=$("toast");t.textContent=m;t.classList.add("on");clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove("on"),2200);}
+$("copy").onclick=async()=>{const cust=!$("pcust").hidden;let s;
+ if(cust)s=$("ctext").textContent;
+ else{
+  const t1=[...$("ctab").rows].map(r=>[...r.cells].map(c=>c.textContent).join("\t")).join("\n");
+  const t2=[...$("ctab_room").rows].map(r=>[...r.cells].map(c=>c.textContent).join("\t")).join("\n");
+  const t3=[...$("ctab_calc").rows].map(r=>[...r.cells].map(c=>c.textContent).join("\t")).join("\n");
+  s=code()+"\n"+flights()+"\n\n【每位估價明細】\n"+t1+"\n\n【每間房間費用明細】\n"+t2+"\n\n【總費用計算與金額對照】\n"+t3;
+ }
+ try{await navigator.clipboard.writeText(s);toast("已複製");}catch(e){toast("無法自動複製，請手動選取");}};
+$("save").onclick=()=>toast("接上資料後啟用：會寫入報價記錄與各組報價明細");
+$("reset").onclick=()=>{KEYS.forEach(k=>S.p[k]=0);S.rooms=[];S.picked=[];GROUPS.forEach(g=>g.manualSel=false);$("cname").value="";$("ver").value="";$("oldc").checked=$("early").checked=$("firework_d1").checked=false;all();};
+S.rooms=[newRoom({adult:1},DEF_INN),newRoom({adult:3,c0:1},DEF_INN)];if(CAP["四人房"])S.rooms[1].type="四人房";S.rooms[1].typeAuto=false;
+S.rooms.forEach(r=>{r.bikeAuto=false;});S.rooms[0].bike=1;S.rooms[1].bike=1;
+$("bikemode").value="total";$("oldc").checked=true;$("early").checked=true;
+applyPreferredVendors();
+{const g2=GROUPS.findIndex(g=>g.name==="南海-南海二島"),g1=GROUPS.findIndex(g=>g.name==="水族館門票");if(g2>=0&&g1>=0){const i2=GROUPS[g2].sel??GROUPS[g2].def;
+ const i1=GROUPS[g1].def;
+  S.picked.push({g:g2,i:i2,day:2,p:P({adult:4}),auto:false},{g:g1,i:i1,day:3,p:P({adult:4}),auto:false});}}
+all();
+}
+(function(){const API_URL="https://script.google.com/macros/s/AKfycbxIXOrkQj0ICJNMrZ6TAcRumm_H55wYVRPScP3z3UtfmHujwKVnjzRYPkTVOdARgk8L/exec";
+ const msg=t=>{const p=document.querySelector("header p");if(p)p.textContent=t;};
+ msg("讀取報價參數中⋯⋯");
+ fetch(API_URL+(API_URL.includes("?")?"&":"?")+"api=1",{cache:"no-store"}).then(r=>r.json())
+  .then(r=>{try{boot(parseAll(r));msg("輸入需求，右側即時產生成本分析表與給客人看的報價。尚未設定的價格以「—」顯示。");}catch(e){msg("資料讀取後處理失敗："+e.message);}})
+  .catch(e=>msg("無法讀取報價參數："+(e&&e.message||e)));})();
+
+</script>
+</body>
+</html>

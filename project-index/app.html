@@ -106,6 +106,8 @@ const SKIP=['bear-game','adsb-list','bearbabybaby-ai.github.io','repository-name
 /* 已知系統的中文名稱；新程式庫會自動用它網頁的標題 */
 const KNOWN=['bearbear','bearbao','bearbao-mini','Lantern-Festival','penghu-bear-journey','penghu-food'];
 const NAME={'bearbear':'熊熊綜合系統','bearbao':'熊寶系統','bearbao-mini':'熊寶小資訊','lantern-festival':'2027澎湖元宵','penghu-bear-journey':'熊熊澎湖之旅','penghu-food':'澎湖資訊推薦'};
+/* 主網域程式庫裡的系統：資料夾、名稱 */
+const INNER=[['penghu-quote','澎湖報價系統']];
 const BAD=/(^|\/)(lib|libs|node_modules|tests?|assets|icons|scripts|tools|sources|docs|google-sites|build|apk|\.github|native\/www|www\/lib|leaflet|markercluster)\//i;
 const CODE=/\.(html|js|cjs|mjs)$/i;
 async function j(u){const r=await fetch(u);if(!r.ok)throw new Error(r.status);return r.json()}
@@ -131,6 +133,13 @@ const repos=(await j(`https://api.github.com/users/${OWNER}/repos?per_page=100`)
    systems.push({n:nm,u:`https://github.com/${OWNER}/${r.name}/releases`,f:feats(await read(files.filter(x=>x.path.startsWith(s+'/'))))});
   }
  }
+ /* 放在主網域程式庫裡的系統（資料夾） */
+ for(const [dir,nm] of INNER){
+  const br='main';
+  const tree=(await j(`https://api.github.com/repos/${OWNER}/${OWNER}.github.io/git/trees/${br}?recursive=1`)).tree.filter(x=>x.type==='blob'&&x.path.startsWith(dir+'/')&&CODE.test(x.path));
+  const txt=(await Promise.all(tree.map(x=>t(raw(OWNER+'.github.io',br,x.path))))).join('\n');
+  systems.push({n:nm,u:`https://${OWNER.toLowerCase()}.github.io/${dir}/`,f:CATS.flatMap(([,,fs])=>fs.filter(([,kw])=>count(txt,kw)>=2).map(([fn])=>fn))});
+ }
  systems.sort((a,b)=>a.n.localeCompare(b.n,'zh-Hant'));
  return systems;
 }
@@ -143,8 +152,11 @@ function build(systems){
  const TOP=['熊熊綜合系統','熊寶系統'],rk=n=>{const k=TOP.indexOf(n);return k<0?9:k};
  const order=systems.map((s,i)=>i).sort((a,b)=>rk(systems[a].n)-rk(systems[b].n));
  /* 每個系統一種鮮明顏色，選單、光點、名稱框、線條都用同一色（依左側選單順序） */
- const SC=['#0a6fb3','#f08c1e','#e0393e','#22a35a','#14a3b8','#8b5cc7','#e2a910'];
- SY=systems.map((s,i)=>({i,n:s.n,u:s.u,t:'s',col:SC[order.indexOf(i)%SC.length],bg:SC[order.indexOf(i)%SC.length]}));FE=[];LK=[];
+ const SC=['#0a6fb3','#f08c1e','#e0393e','#22a35a','#14a3b8','#8b5cc7','#e2a910','#c2185b'];
+ /* 已有的系統固定顏色，新加入的系統不會讓舊的換色 */
+ const FIX={'熊熊綜合系統':'#0a6fb3','熊寶系統':'#f08c1e','2027澎湖元宵':'#e0393e','熊熊澎湖之旅':'#22a35a','熊寶小資訊':'#14a3b8','熊寶桌寵':'#8b5cc7','澎湖資訊推薦':'#e2a910','澎湖報價系統':'#c2185b'};
+ const cl=(s,i)=>FIX[s.n]||SC[order.indexOf(i)%SC.length];
+ SY=systems.map((s,i)=>({i,n:s.n,u:s.u,t:'s',col:cl(s,i),bg:cl(s,i)}));FE=[];LK=[];
  CATS.forEach(([cn,col,fs])=>fs.forEach(([fn,kw])=>{
   const owners=systems.map((s,i)=>s.f.includes(fn)?i:-1).filter(i=>i>=0);
   if(!owners.length)return;

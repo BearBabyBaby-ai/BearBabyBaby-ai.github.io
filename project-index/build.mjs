@@ -16,6 +16,8 @@ const CATS=[
  ['活動廟宇','#ff6f7d',[['月曆活動',['月曆']],['元宵資訊',['元宵']],['花火節',['花火']],['集章',['集章']],['主祀判斷',['主祀']]]],
  ['個人管理','#b68cff',[['重要資訊提醒',['重要資訊提醒']],['財務管理',['財務']],['機票搶票提醒',['搶票']],['特殊日期生日',['特殊日期']],['工作模式查詢',['工作模式']],['後台編修',['後台']]]]
 ];
+/* 主網域程式庫裡的系統：資料夾、名稱 */
+const INNER=[['penghu-quote','澎湖報價系統']];
 const BAD=/(^|\/)(lib|libs|node_modules|tests?|assets|icons|scripts|tools|sources|docs|google-sites|build|apk|\.github|native\/www|www\/lib|leaflet|markercluster)\//i;
 const CODE=/\.(html|js|cjs|mjs)$/i;
 async function j(u){const r=await fetch(u,{headers:H});if(!r.ok)throw new Error(r.status+' '+u);return r.json()}
@@ -38,6 +40,13 @@ for(const r of repos){
   let nm=s;try{nm=JSON.parse(await t(raw(r.name,br,s+'/package.json'))).productName||s}catch(e){}
   systems.push({n:nm,u:`https://github.com/${OWNER}/${r.name}/releases`,f:feats(await read(files.filter(x=>x.path.startsWith(s+'/'))))});
  }
+}
+/* 放在主網域程式庫裡的系統（資料夾） */
+for(const [dir,nm] of INNER){
+ const br='main';
+ const tree=(await j(`https://api.github.com/repos/${OWNER}/${OWNER}.github.io/git/trees/${br}?recursive=1`)).tree.filter(x=>x.type==='blob'&&x.path.startsWith(dir+'/')&&CODE.test(x.path));
+ const txt=(await Promise.all(tree.map(x=>t(raw(OWNER+'.github.io',br,x.path))))).join('\n');
+ systems.push({n:nm,u:`https://${OWNER.toLowerCase()}.github.io/${dir}/`,f:CATS.flatMap(([,,fs])=>fs.filter(([,kw])=>count(txt,kw)>=2).map(([fn])=>fn))});
 }
 systems.sort((a,b)=>a.n.localeCompare(b.n,'zh-Hant'));
 fs.writeFileSync(new URL('./data.json',import.meta.url),JSON.stringify({systems},null,1)+'\n');
